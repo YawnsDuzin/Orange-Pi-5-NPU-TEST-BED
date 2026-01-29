@@ -1,0 +1,48 @@
+<!-- Single camera card component -->
+<div class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-700/50 cursor-pointer transition"
+     @click="selectCamera('{{ camera.config.id }}')"
+     :class="selectedCamera === '{{ camera.config.id }}' ? 'bg-gray-700 ring-1 ring-indigo-500' : ''">
+    <!-- Status indicator -->
+    <span class="w-2 h-2 rounded-full flex-shrink-0
+        {% if camera.state.status.value == 'connected' %}bg-green-500
+        {% elif camera.state.status.value == 'connecting' %}bg-yellow-500 animate-pulse
+        {% elif camera.state.status.value == 'error' %}bg-red-500
+        {% else %}bg-gray-500{% endif %}">
+    </span>
+
+    <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium text-white truncate">{{ camera.config.name }}</p>
+        <p class="text-xs text-gray-500 truncate">
+            {% if camera.state.status.value == 'connected' %}
+                {{ camera.state.resolution | default("") }} &middot; {{ "%.1f"|format(camera.state.fps) }} FPS
+            {% elif camera.state.status.value == 'error' %}
+                {{ camera.state.error_message[:30] }}
+            {% else %}
+                {{ camera.state.status.value }}
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex-shrink-0">
+        {% if camera.state.status.value == 'connected' %}
+        <button hx-post="/api/cameras/{{ camera.config.id }}/stop"
+                hx-swap="none"
+                class="text-gray-400 hover:text-red-400 transition p-1"
+                title="Stop">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <rect x="6" y="6" width="12" height="12" rx="1"/>
+            </svg>
+        </button>
+        {% elif camera.state.status.value in ['stopped', 'disconnected', 'error'] %}
+        <button hx-post="/api/cameras/{{ camera.config.id }}/start"
+                hx-swap="none"
+                class="text-gray-400 hover:text-green-400 transition p-1"
+                title="Start">
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z"/>
+            </svg>
+        </button>
+        {% endif %}
+    </div>
+</div>

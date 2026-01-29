@@ -1,0 +1,94 @@
+<!-- ROI editor component (HTMX partial) -->
+<div class="space-y-3">
+    {% if camera_id %}
+    <!-- ROI tools -->
+    <div class="flex gap-1">
+        <button onclick="setROITool('rectangle')"
+                class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-1 rounded transition"
+                title="Rectangle">
+            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <rect x="3" y="3" width="18" height="18" rx="2" stroke-width="2"/>
+            </svg>
+        </button>
+        <button onclick="setROITool('polygon')"
+                class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-1 rounded transition"
+                title="Polygon">
+            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <polygon points="12,2 22,8.5 18,20 6,20 2,8.5" stroke-width="2"/>
+            </svg>
+        </button>
+        <button onclick="setROITool('line')"
+                class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-1 rounded transition"
+                title="Line">
+            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <line x1="4" y1="20" x2="20" y2="4" stroke-width="2"/>
+            </svg>
+        </button>
+        <button onclick="clearROI()"
+                class="text-xs bg-gray-700 hover:bg-red-600 text-gray-300 px-2 py-1 rounded transition ml-auto"
+                title="Clear">
+            <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Active ROIs list -->
+    {% if active_rois %}
+    <div class="space-y-1">
+        {% for roi in active_rois %}
+        <div class="flex items-center gap-2 text-xs p-1.5 bg-gray-700/50 rounded">
+            <span class="w-3 h-3 rounded-sm flex-shrink-0" style="background-color: {{ roi.color }}"></span>
+            <span class="flex-1 text-gray-300 truncate">{{ roi.name }}</span>
+            <span class="text-gray-500">{{ roi.roi_type.value }}</span>
+            <span class="text-gray-500">{{ roi.action.value }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-xs text-gray-500 text-center py-2">No ROI defined</p>
+    {% endif %}
+
+    <!-- Presets -->
+    {% if presets %}
+    <div>
+        <label class="text-xs text-gray-500 block mb-1">Presets</label>
+        <select class="w-full bg-gray-700 border border-gray-600 rounded text-xs text-white px-2 py-1.5"
+                onchange="activatePreset(this.value, '{{ camera_id }}')">
+            <option value="">-- Select preset --</option>
+            {% for preset in presets %}
+            <option value="{{ preset.id }}" {% if preset.is_active %}selected{% endif %}>
+                {{ preset.name }} ({{ preset.rois | length }} ROIs)
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <p class="text-xs text-gray-500 text-center py-4">Select a camera to edit ROIs</p>
+    {% endif %}
+</div>
+
+<script>
+function setROITool(tool) {
+    if (window.roiCanvas) {
+        window.roiCanvas.setTool(tool);
+    }
+}
+
+function clearROI() {
+    if (window.roiCanvas) {
+        window.roiCanvas.clear();
+    }
+}
+
+function activatePreset(presetId, cameraId) {
+    if (!presetId) return;
+    fetch('/api/roi/presets/' + presetId + '/activate?camera_id=' + cameraId, {
+        method: 'POST',
+    }).then(() => {
+        htmx.ajax('GET', '/api/roi/editor?camera_id=' + cameraId, '#roi-panel');
+    });
+}
+</script>

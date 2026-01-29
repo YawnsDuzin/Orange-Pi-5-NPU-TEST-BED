@@ -1,0 +1,53 @@
+# NPU Inference Platform - Docker Compose
+# For Orange Pi 5 Plus (RK3588)
+version: '3.8'
+
+services:
+  npu-platform:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: npu-inference-platform
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist data
+      - ../data:/app/data
+      # Mount models directory
+      - ../models:/app/models:ro
+      # NPU device access (required for RKNN)
+      - /dev/dri:/dev/dri
+    devices:
+      # RK3588 NPU device
+      - /dev/dri:/dev/dri
+      - /dev/video0:/dev/video0  # USB camera (optional)
+    environment:
+      - APP_DEBUG=false
+      - SERVER_LOG_LEVEL=info
+      - CAMERA_MAX_CAMERAS=8
+      - INFERENCE_DEFAULT_CONFIDENCE=0.5
+    # Required for NPU access
+    privileged: true
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import httpx; httpx.get('http://localhost:8000/api/system/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # Optional: MQTT Broker for notifications
+  # mqtt:
+  #   image: eclipse-mosquitto:2
+  #   container_name: mqtt-broker
+  #   restart: unless-stopped
+  #   ports:
+  #     - "1883:1883"
+  #     - "9001:9001"
+  #   volumes:
+  #     - mosquitto_data:/mosquitto/data
+  #     - mosquitto_log:/mosquitto/log
+
+# volumes:
+#   mosquitto_data:
+#   mosquitto_log:

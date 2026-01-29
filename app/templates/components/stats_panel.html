@@ -1,0 +1,76 @@
+<!-- System status panel (HTMX partial) -->
+<div class="space-y-3">
+    <!-- CPU -->
+    <div>
+        <div class="flex justify-between text-sm mb-1">
+            <span class="text-gray-400">CPU</span>
+            <span class="text-white font-mono">{{ "%.0f"|format(status.cpu.usage_percent) }}%</span>
+        </div>
+        <div class="w-full bg-gray-700 rounded-full h-2">
+            <div class="h-2 rounded-full transition-all duration-500
+                {% if status.cpu.usage_percent > 80 %}bg-red-500
+                {% elif status.cpu.usage_percent > 60 %}bg-yellow-500
+                {% else %}bg-green-500{% endif %}"
+                 style="width: {{ status.cpu.usage_percent }}%"></div>
+        </div>
+    </div>
+
+    <!-- NPU -->
+    <div>
+        <div class="flex justify-between text-sm mb-1">
+            <span class="text-gray-400">NPU</span>
+            <span class="text-white font-mono">
+                {% if status.npu.available %}
+                    {{ "%.0f"|format(status.npu.usage_percent) }}%
+                {% else %}
+                    N/A
+                {% endif %}
+            </span>
+        </div>
+        <div class="w-full bg-gray-700 rounded-full h-2">
+            <div class="h-2 rounded-full transition-all duration-500
+                {% if status.npu.usage_percent > 80 %}bg-purple-500
+                {% else %}bg-indigo-500{% endif %}"
+                 style="width: {{ status.npu.usage_percent }}%"></div>
+        </div>
+    </div>
+
+    <!-- Memory -->
+    <div>
+        <div class="flex justify-between text-sm mb-1">
+            <span class="text-gray-400">Memory</span>
+            <span class="text-white font-mono">
+                {{ "%.0f"|format(status.memory.used_mb) }}MB / {{ "%.0f"|format(status.memory.total_mb) }}MB
+            </span>
+        </div>
+        <div class="w-full bg-gray-700 rounded-full h-2">
+            <div class="h-2 rounded-full transition-all duration-500
+                {% if status.memory.usage_percent > 85 %}bg-red-500
+                {% elif status.memory.usage_percent > 70 %}bg-yellow-500
+                {% else %}bg-blue-500{% endif %}"
+                 style="width: {{ status.memory.usage_percent }}%"></div>
+        </div>
+    </div>
+
+    <!-- Temperature -->
+    <div class="flex justify-between text-sm">
+        <span class="text-gray-400">Temperature</span>
+        <span class="font-mono
+            {% if status.temperature.cpu_temp > 75 %}text-red-400
+            {% elif status.temperature.cpu_temp > 60 %}text-yellow-400
+            {% else %}text-white{% endif %}">
+            CPU {{ "%.0f"|format(status.temperature.cpu_temp) }}&deg;C
+            {% if status.temperature.npu_temp > 0 %}
+            &middot; NPU {{ "%.0f"|format(status.temperature.npu_temp) }}&deg;C
+            {% endif %}
+        </span>
+    </div>
+
+    <!-- Disk -->
+    <div class="flex justify-between text-sm">
+        <span class="text-gray-400">Disk</span>
+        <span class="text-white font-mono">
+            {{ "%.1f"|format(status.disk.free_gb) }}GB free / {{ "%.1f"|format(status.disk.total_gb) }}GB
+        </span>
+    </div>
+</div>

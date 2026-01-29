@@ -1,0 +1,111 @@
+<!-- Inference settings panel (HTMX partial) -->
+<div x-data="{
+    confidence: {{ config.confidence_threshold | default(0.5) }},
+    nmsThreshold: {{ config.nms_threshold | default(0.45) }},
+    maxDetections: {{ config.max_detections | default(100) }},
+}">
+    <div class="space-y-4">
+        <!-- Confidence Threshold -->
+        <div>
+            <div class="flex justify-between text-sm mb-1">
+                <label class="text-gray-400">Confidence</label>
+                <span class="text-white font-mono" x-text="confidence.toFixed(2)"></span>
+            </div>
+            <input type="range" min="0" max="1" step="0.05"
+                   x-model.number="confidence"
+                   class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+        </div>
+
+        <!-- NMS Threshold -->
+        <div>
+            <div class="flex justify-between text-sm mb-1">
+                <label class="text-gray-400">NMS Threshold</label>
+                <span class="text-white font-mono" x-text="nmsThreshold.toFixed(2)"></span>
+            </div>
+            <input type="range" min="0" max="1" step="0.05"
+                   x-model.number="nmsThreshold"
+                   class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+        </div>
+
+        <!-- Max Detections -->
+        <div>
+            <div class="flex justify-between text-sm mb-1">
+                <label class="text-gray-400">Max Detections</label>
+                <span class="text-white font-mono" x-text="maxDetections"></span>
+            </div>
+            <input type="range" min="1" max="500" step="10"
+                   x-model.number="maxDetections"
+                   class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex gap-2 pt-2">
+            {% if is_running %}
+            <button hx-post="/api/inference/stop/{{ camera_id }}"
+                    hx-target="#inference-panel"
+                    hx-swap="innerHTML"
+                    class="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm py-2 rounded-lg transition">
+                Stop Inference
+            </button>
+            {% else %}
+            <button onclick="startInference()"
+                    class="flex-1 bg-green-600 hover:bg-green-700 text-white text-sm py-2 rounded-lg transition"
+                    {% if not camera_id %}disabled{% endif %}>
+                Start Inference
+            </button>
+            {% endif %}
+            <button onclick="applyConfig()"
+                    class="bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm px-4 py-2 rounded-lg transition"
+                    {% if not is_running %}disabled{% endif %}>
+                Apply
+            </button>
+        </div>
+    </div>
+
+    <script>
+    function startInference() {
+        const el = document.querySelector('[x-data]');
+        const data = el.__x ? el.__x.$data : {};
+        const cameraId = '{{ camera_id }}';
+        const modelId = '{{ active_model_id | default("") }}';
+
+        if (!cameraId || !modelId) {
+            alert('Please select a camera and activate a model first');
+            return;
+        }
+
+        fetch('/api/inference/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                camera_id: cameraId,
+                model_id: modelId,
+                enabled: true,
+                config: {
+                    confidence_threshold: data.confidence || 0.5,
+                    nms_threshold: data.nmsThreshold || 0.45,
+                    max_detections: data.maxDetections || 100,
+                },
+            }),
+        }).then(() => {
+            htmx.ajax('GET', '/api/inference/panel?camera_id=' + cameraId, '#inference-panel');
+        });
+    }
+
+    function applyConfig() {
+        const cameraId = '{{ camera_id }}';
+        const el = document.querySelector('[x-data]');
+        const data = el.__x ? el.__x.$data : {};
+
+        fetch('/api/inference/config/' + cameraId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                confidence_threshold: data.confidence || 0.5,
+                nms_threshold: data.nmsThreshold || 0.45,
+                max_detections: data.maxDetections || 100,
+            }),
+        });
+    }
+    </script>
+</div>

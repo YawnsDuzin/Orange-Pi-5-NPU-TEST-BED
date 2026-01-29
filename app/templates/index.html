@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block nav_dashboard %}text-white bg-gray-700{% endblock %}
+
+{% block content %}
+<div class="space-y-4" x-data="dashboardApp()">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <h1 class="text-xl font-bold text-white">Dashboard</h1>
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-400">{{ app_version }}</span>
+        </div>
+    </div>
+
+    <!-- Video viewer area -->
+    <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+        <div class="relative" style="min-height: 480px;">
+            <!-- Stream viewer -->
+            <div id="stream-viewer" class="w-full flex items-center justify-center bg-black" style="min-height: 480px;">
+                <template x-if="selectedCamera">
+                    <img :src="'/api/stream/' + selectedCamera + '/mjpeg'"
+                         class="max-w-full max-h-[600px] object-contain"
+                         alt="Camera stream">
+                </template>
+                <template x-if="!selectedCamera">
+                    <div class="text-center text-gray-500 py-20">
+                        <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                        </svg>
+                        <p class="text-lg">No camera selected</p>
+                        <p class="text-sm mt-1">Select a camera from the list below or add one</p>
+                    </div>
+                </template>
+            </div>
+
+            <!-- ROI Canvas Overlay -->
+            <canvas id="roi-overlay" class="absolute inset-0 w-full h-full pointer-events-none" x-show="showROI"></canvas>
+
+            <!-- Performance overlay -->
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3"
+                 x-show="selectedCamera">
+                <div id="perf-stats" class="flex items-center gap-4 text-sm"
+                     hx-get="/api/inference/status/"
+                     hx-trigger="every 1s"
+                     hx-swap="innerHTML">
+                    <span class="text-gray-400">Waiting for inference...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Control panels (3 columns) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Camera List -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Cameras</h2>
+                <button @click="showAddCamera = true"
+                        class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded transition">
+                    + Add
+                </button>
+            </div>
+            <div id="camera-list"
+                 hx-get="/api/cameras/list"
+                 hx-trigger="load, every 5s"
+                 hx-swap="innerHTML">
+                <div class="text-sm text-gray-500 text-center py-4">Loading cameras...</div>
+            </div>
+        </div>
+
+        <!-- Model Selector -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Models</h2>
+                <button hx-post="/api/models/scan"
+                        hx-swap="none"
+                        class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-1 rounded transition">
+                    Scan
+                </button>
+            </div>
+            <div id="model-list"
+                 hx-get="/api/models/list"
+                 hx-trigger="load, every 10s"
+                 hx-swap="innerHTML">
+                <div class="text-sm text-gray-500 text-center py-4">Loading models...</div>
+            </div>
+        </div>
+
+        <!-- ROI Panel -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">ROI</h2>
+                <button @click="showROI = !showROI"
+                        :class="showROI ? 'bg-indigo-600' : 'bg-gray-700'"
+                        class="text-xs hover:opacity-80 text-white px-2 py-1 rounded transition">
+                    <span x-text="showROI ? 'Hide' : 'Show'"></span>
+                </button>
+            </div>
+            <div id="roi-panel"
+                 hx-get="/api/roi/editor"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <div class="text-sm text-gray-500 text-center py-4">Loading ROI editor...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom panels (2 columns) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Inference Settings -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
+            <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">Inference Settings</h2>
+            <div id="inference-panel"
+                 hx-get="/api/inference/panel"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <div class="text-sm text-gray-500 text-center py-4">Loading inference panel...</div>
+            </div>
+        </div>
+
+        <!-- System Status -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
+            <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">System Status</h2>
+            <div id="system-status"
+                 hx-get="/api/system/status/panel"
+                 hx-trigger="load, every 3s"
+                 hx-swap="innerHTML">
+                <div class="text-sm text-gray-500 text-center py-4">Loading system status...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Camera Modal -->
+    <div x-show="showAddCamera" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-md" @click.away="showAddCamera = false">
+            <h3 class="text-lg font-semibold mb-4">Add Camera</h3>
+            <form hx-post="/api/cameras" hx-target="#camera-list" hx-swap="innerHTML"
+                  @htmx:afterRequest="showAddCamera = false">
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Name</label>
+                        <input name="name" type="text" required
+                               class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">URL</label>
+                        <input name="url" type="text" required placeholder="rtsp://..."
+                               class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-400 mb-1">Type</label>
+                        <select name="camera_type"
+                                class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                            <option value="rtsp">RTSP</option>
+                            <option value="usb">USB</option>
+                            <option value="csi">CSI</option>
+                            <option value="file">File</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" @click="showAddCamera = false"
+                            class="px-4 py-2 text-sm text-gray-400 hover:text-white transition">Cancel</button>
+                    <button type="submit"
+                            class="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function dashboardApp() {
+    return {
+        selectedCamera: null,
+        showAddCamera: false,
+        showROI: false,
+
+        selectCamera(cameraId) {
+            this.selectedCamera = cameraId;
+            // Update inference panel
+            htmx.ajax('GET', '/api/inference/panel?camera_id=' + cameraId, '#inference-panel');
+            htmx.ajax('GET', '/api/roi/editor?camera_id=' + cameraId, '#roi-panel');
+        },
+    };
+}
+</script>
+{% endblock %}
