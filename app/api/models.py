@@ -69,9 +69,8 @@ async def list_models_html(
         models.append({"info": info, "state": state})
 
     return templates.TemplateResponse(
-        "components/model_selector.html",
+        request, "components/model_selector.html",
         {
-            "request": request,
             "models": models,
             "active_model_id": inference_engine.active_model_id,
         },

@@ -120,9 +120,8 @@ async def roi_editor_html(
     active_rois = roi_manager.get_active_rois(camera_id) if camera_id else []
 
     return templates.TemplateResponse(
-        "components/roi_editor.html",
+        request, "components/roi_editor.html",
         {
-            "request": request,
             "camera_id": camera_id,
             "presets": presets,
             "active_rois": active_rois,

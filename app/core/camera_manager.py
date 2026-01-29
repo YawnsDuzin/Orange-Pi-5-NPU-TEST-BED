@@ -165,7 +165,7 @@ class CameraStream:
     async def _capture_loop(self) -> None:
         """Main capture loop with automatic reconnection."""
         reconnect_count = 0
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         while self._running:
             # Connect if not connected

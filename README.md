@@ -877,3 +877,26 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+---
+
+## 변경 이력
+
+### v1.0.1 - QA 검증 및 안정성 개선
+
+**버그 수정:**
+- `EventHandler` 초기화 시 `snapshots_dir` 미전달 → 이벤트 스냅샷 저장 가능하도록 수정
+- `FrameProcessor`가 `app.state`에 등록되지 않던 문제 수정 → 의존성 주입 및 생명주기 관리 정상화
+- `_InferenceStatsTracker.to_stats()`에서 `fps_counter.update()` 호출 시 부수효과 발생 → 읽기 전용 `get_fps()` 메서드로 분리
+- `asyncio.get_event_loop()` 사용으로 인한 Python 3.10+ 폐기 경고 → `asyncio.get_running_loop()`로 전환
+- `TemplateResponse(name, ctx)` 폐기 API → `TemplateResponse(request, name, ctx)` 신규 API로 전환
+- paho-mqtt v2 호환성 문제 → `CallbackAPIVersion` 자동 감지 + v1 fallback 구현
+- HTMX 폼이 JSON 대신 form-encoded 전송하던 문제 → `json-enc` 확장 적용 및 올바른 엔드포인트 연결
+- 테스트 `test_client` fixture가 lifespan을 트리거하지 않던 문제 → 컨텍스트 매니저 사용으로 수정
+
+**개선:**
+- `FPSCounter` 클래스에 `get_fps()` (읽기 전용) 메서드 추가
+- 의존성 주입에 `get_frame_processor()` 함수 추가
+- 앱 종료 시 `FrameProcessor.stop_all()` 호출하여 파이프라인 정리
+- 모든 테스트 52건 통과 확인 (API, Camera, Inference, ROI)
+- 서버 시작/종료 정상 동작 확인

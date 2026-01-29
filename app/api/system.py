@@ -76,8 +76,8 @@ async def status_panel_html(
     """System status panel as HTMX partial."""
     status = system_monitor.status
     return templates.TemplateResponse(
-        "components/stats_panel.html",
-        {"request": request, "status": status},
+        request, "components/stats_panel.html",
+        {"status": status},
     )
 
 
@@ -179,8 +179,7 @@ async def log_viewer_html(
 ):
     """Log viewer as HTMX partial."""
     return templates.TemplateResponse(
-        "components/log_viewer.html",
-        {"request": request},
+        request, "components/log_viewer.html",
     )
 
 

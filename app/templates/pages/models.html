@@ -21,9 +21,9 @@
     <!-- Upload form -->
     <div id="upload-form" class="hidden bg-gray-800 rounded-xl border border-gray-700 p-6">
         <h2 class="text-lg font-semibold mb-4">Upload RKNN Model</h2>
-        <form hx-post="/api/models/upload" hx-target="#models-grid" hx-swap="innerHTML"
+        <form hx-post="/api/models/upload" hx-swap="none"
               hx-encoding="multipart/form-data"
-              hx-on::after-request="this.reset(); document.getElementById('upload-form').classList.add('hidden')">
+              hx-on::after-request="if (event.detail.successful) { this.reset(); document.getElementById('upload-form').classList.add('hidden'); htmx.ajax('GET', '/api/models/list', '#models-grid'); }">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="md:col-span-2">
                     <label class="block text-sm text-gray-400 mb-1">Model File (.rknn)</label>
@@ -65,7 +65,7 @@
 
     <!-- Models grid -->
     <div id="models-grid"
-         hx-get="/api/models"
+         hx-get="/api/models/list"
          hx-trigger="load, every 10s"
          hx-swap="innerHTML"
          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -71,14 +71,14 @@ class SystemMonitor:
 
     async def get_status(self) -> SystemStatus:
         """Get current system status (with fresh read)."""
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         status = await loop.run_in_executor(None, self._read_all_metrics)
         self._status = status
         return status
 
     async def _monitor_loop(self) -> None:
         """Periodic monitoring loop."""
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         while self._running:
             try:
                 self._status = await loop.run_in_executor(None, self._read_all_metrics)

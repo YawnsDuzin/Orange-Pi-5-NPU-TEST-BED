@@ -94,10 +94,19 @@ class NotificationService:
         try:
             import paho.mqtt.client as mqtt
 
-            client = mqtt.Client(
-                client_id=f"npu-platform-{id(self)}",
-                protocol=mqtt.MQTTv5,
-            )
+            # paho-mqtt v2 uses CallbackAPIVersion; v1 uses positional args
+            try:
+                client = mqtt.Client(
+                    mqtt.CallbackAPIVersion.VERSION2,
+                    client_id=f"npu-platform-{id(self)}",
+                    protocol=mqtt.MQTTv5,
+                )
+            except (AttributeError, TypeError):
+                # Fallback for paho-mqtt v1.x
+                client = mqtt.Client(
+                    client_id=f"npu-platform-{id(self)}",
+                )
+
             client.connect(
                 self._settings.mqtt_broker,
                 self._settings.mqtt_port,
