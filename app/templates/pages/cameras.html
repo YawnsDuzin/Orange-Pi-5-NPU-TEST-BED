@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Cameras - {{ app_name }}{% endblock %}
+{% block nav_cameras %}text-white bg-gray-700{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <div class="flex items-center justify-between">
+        <h1 class="text-xl font-bold text-white">Camera Management</h1>
+        <button onclick="document.getElementById('add-camera-form').classList.toggle('hidden')"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg transition">
+            + Add Camera
+        </button>
+    </div>
+
+    <!-- Add camera form -->
+    <div id="add-camera-form" class="hidden bg-gray-800 rounded-xl border border-gray-700 p-6">
+        <h2 class="text-lg font-semibold mb-4">Add New Camera</h2>
+        <form hx-post="/api/cameras" hx-target="#cameras-grid" hx-swap="innerHTML"
+              hx-on::after-request="this.reset(); document.getElementById('add-camera-form').classList.add('hidden')">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Name</label>
+                    <input name="name" type="text" required placeholder="Camera name"
+                           class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Type</label>
+                    <select name="camera_type" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                        <option value="rtsp">RTSP Stream</option>
+                        <option value="usb">USB Camera</option>
+                        <option value="csi">CSI Camera</option>
+                        <option value="file">Video File</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm text-gray-400 mb-1">URL / Path</label>
+                    <input name="url" type="text" required placeholder="rtsp://192.168.1.100:554/stream"
+                           class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Reconnect Interval (sec)</label>
+                    <input name="reconnect_interval" type="number" value="5" min="1" max="300"
+                           class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Description</label>
+                    <input name="description" type="text" placeholder="Optional description"
+                           class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button type="button" onclick="document.getElementById('add-camera-form').classList.add('hidden')"
+                        class="px-4 py-2 text-sm text-gray-400 hover:text-white transition">Cancel</button>
+                <button type="submit" class="px-6 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">
+                    Add Camera
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Cameras grid -->
+    <div id="cameras-grid"
+         hx-get="/api/cameras"
+         hx-trigger="load, every 5s"
+         hx-swap="innerHTML"
+         class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="text-center text-gray-500 py-8 col-span-full">Loading cameras...</div>
+    </div>
+</div>
+{% endblock %}

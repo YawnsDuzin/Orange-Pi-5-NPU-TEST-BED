@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+*.local
+
+# Node
+node_modules/
+package-lock.json
+
+# Data (runtime generated)
+data/logs/*.log
+data/snapshots/*.jpg
+data/snapshots/*.png
+data/config.json
+
+# RKNN models (large binary files)
+models/**/*.rknn
+!models/**/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build
+*.egg
+*.whl

@@ -1,0 +1,34 @@
+# NPU Inference Platform - Python Dependencies
+# ==============================================
+
+# Web Framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+jinja2>=3.1.3
+python-multipart>=0.0.9
+aiofiles>=23.2.0
+websockets>=12.0
+
+# Data Validation
+pydantic>=2.6.0
+pydantic-settings>=2.1.0
+
+# Computer Vision
+opencv-python-headless>=4.9.0
+numpy>=1.26.0
+
+# RKNN Runtime (install separately on Orange Pi 5)
+# rknn-toolkit2-lite>=2.0.0
+
+# HTTP Client (for webhooks and testing)
+httpx>=0.26.0
+
+# MQTT (optional - for notifications)
+# paho-mqtt>=2.0.0
+
+# Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
+
+# Development
+# ruff>=0.3.0

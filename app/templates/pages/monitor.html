@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Monitor - {{ app_name }}{% endblock %}
+{% block nav_monitor %}text-white bg-gray-700{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <h1 class="text-xl font-bold text-white">System Monitor</h1>
+
+    <!-- System metrics -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-4"
+             hx-get="/api/system/status"
+             hx-trigger="every 3s"
+             hx-swap="innerHTML"
+             id="cpu-card">
+            <p class="text-sm text-gray-400">CPU Usage</p>
+            <p class="text-2xl font-bold text-white mt-1">--</p>
+        </div>
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-4" id="npu-card">
+            <p class="text-sm text-gray-400">NPU Usage</p>
+            <p class="text-2xl font-bold text-white mt-1">--</p>
+        </div>
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-4" id="mem-card">
+            <p class="text-sm text-gray-400">Memory</p>
+            <p class="text-2xl font-bold text-white mt-1">--</p>
+        </div>
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-4" id="temp-card">
+            <p class="text-sm text-gray-400">Temperature</p>
+            <p class="text-2xl font-bold text-white mt-1">--</p>
+        </div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
+            <h2 class="text-sm font-semibold text-gray-300 mb-3">Inference Latency</h2>
+            <canvas id="latency-chart" height="200"></canvas>
+        </div>
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
+            <h2 class="text-sm font-semibold text-gray-300 mb-3">FPS History</h2>
+            <canvas id="fps-chart" height="200"></canvas>
+        </div>
+    </div>
+
+    <!-- Events and logs -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Events -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
+            <h2 class="text-sm font-semibold text-gray-300 mb-3">Recent Events</h2>
+            <div id="events-list"
+                 hx-get="/api/system/events?limit=20"
+                 hx-trigger="load, every 5s"
+                 hx-swap="innerHTML"
+                 class="space-y-1 max-h-64 overflow-y-auto">
+                <p class="text-sm text-gray-500">Loading events...</p>
+            </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
+            <h2 class="text-sm font-semibold text-gray-300 mb-3">Application Logs</h2>
+            <div hx-get="/api/system/logs/viewer"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <p class="text-sm text-gray-500">Loading log viewer...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/stats-chart.js"></script>
+{% endblock %}

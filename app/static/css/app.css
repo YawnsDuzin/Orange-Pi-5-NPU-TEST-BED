@@ -1,0 +1,97 @@
+/* Tailwind CSS build output placeholder */
+/* Run: npx tailwindcss -i ./src/input.css -o ./app/static/css/app.css */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles */
+@layer base {
+    html {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Scrollbar styling for dark theme */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #1f2937;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #4b5563;
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #6b7280;
+    }
+}
+
+@layer components {
+    /* Range slider styling */
+    input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 6px;
+        border-radius: 3px;
+        background: #374151;
+        outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #6366f1;
+        cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #6366f1;
+        cursor: pointer;
+        border: none;
+    }
+
+    /* Status badge */
+    .status-badge {
+        @apply inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full;
+    }
+
+    .status-connected {
+        @apply bg-green-500/20 text-green-400;
+    }
+
+    .status-error {
+        @apply bg-red-500/20 text-red-400;
+    }
+
+    .status-loading {
+        @apply bg-yellow-500/20 text-yellow-400;
+    }
+}
+
+@layer utilities {
+    /* HTMX loading indicator */
+    .htmx-indicator {
+        opacity: 0;
+        transition: opacity 200ms ease-in;
+    }
+
+    .htmx-request .htmx-indicator {
+        opacity: 1;
+    }
+
+    .htmx-request.htmx-indicator {
+        opacity: 1;
+    }
+}

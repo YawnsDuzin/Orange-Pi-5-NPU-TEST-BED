@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Models - {{ app_name }}{% endblock %}
+{% block nav_models %}text-white bg-gray-700{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <div class="flex items-center justify-between">
+        <h1 class="text-xl font-bold text-white">Model Management</h1>
+        <div class="flex gap-2">
+            <button hx-post="/api/models/scan" hx-swap="none"
+                    class="bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm px-4 py-2 rounded-lg transition">
+                Scan Directory
+            </button>
+            <button onclick="document.getElementById('upload-form').classList.toggle('hidden')"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg transition">
+                Upload Model
+            </button>
+        </div>
+    </div>
+
+    <!-- Upload form -->
+    <div id="upload-form" class="hidden bg-gray-800 rounded-xl border border-gray-700 p-6">
+        <h2 class="text-lg font-semibold mb-4">Upload RKNN Model</h2>
+        <form hx-post="/api/models/upload" hx-target="#models-grid" hx-swap="innerHTML"
+              hx-encoding="multipart/form-data"
+              hx-on::after-request="this.reset(); document.getElementById('upload-form').classList.add('hidden')">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2">
+                    <label class="block text-sm text-gray-400 mb-1">Model File (.rknn)</label>
+                    <input name="file" type="file" accept=".rknn" required
+                           class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:bg-indigo-600 file:text-white">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Display Name</label>
+                    <input name="name" type="text" placeholder="Model name"
+                           class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-400 mb-1">Model Type</label>
+                    <select name="model_type" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                        <option value="detection">Object Detection</option>
+                        <option value="segmentation">Instance Segmentation</option>
+                        <option value="pose">Pose Estimation</option>
+                        <option value="classification">Classification</option>
+                        <option value="face_detection">Face Detection</option>
+                        <option value="face_recognition">Face Recognition</option>
+                        <option value="ocr">OCR</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm text-gray-400 mb-1">Description</label>
+                    <input name="description" type="text" placeholder="Optional description"
+                           class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm">
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button type="button" onclick="document.getElementById('upload-form').classList.add('hidden')"
+                        class="px-4 py-2 text-sm text-gray-400 hover:text-white transition">Cancel</button>
+                <button type="submit" class="px-6 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">
+                    Upload
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Models grid -->
+    <div id="models-grid"
+         hx-get="/api/models"
+         hx-trigger="load, every 10s"
+         hx-swap="innerHTML"
+         class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="text-center text-gray-500 py-8 col-span-full">Loading models...</div>
+    </div>
+</div>
+{% endblock %}
