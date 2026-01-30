@@ -11,6 +11,7 @@ from fastapi import Depends, Request
 from app.config import AppSettings
 from app.core.camera_manager import CameraManager
 from app.core.event_handler import EventHandler
+from app.core.frame_processor import FrameProcessor
 from app.core.inference_engine import InferenceEngine
 from app.core.model_registry import ModelRegistry
 from app.core.roi_manager import ROIManager
@@ -57,6 +58,11 @@ def get_event_handler(request: Request) -> EventHandler:
 def get_notification_service(request: Request) -> NotificationService:
     """Get notification service instance."""
     return request.app.state.notification_service
+
+
+def get_frame_processor(request: Request) -> FrameProcessor:
+    """Get frame processor instance."""
+    return request.app.state.frame_processor
 
 
 def get_system_monitor(request: Request) -> SystemMonitor:

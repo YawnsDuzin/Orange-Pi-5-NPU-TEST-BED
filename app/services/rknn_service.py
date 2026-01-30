@@ -3,16 +3,19 @@ RKNN Service Module
 
 Low-level wrapper for RKNN Toolkit2 Lite runtime.
 Provides hardware detection, model validation, and runtime utilities.
-Gracefully degrades when RKNN hardware is not available.
+Gracefully degrades when RKNN hardware is not available (Windows/macOS/x86).
 """
 
 import logging
 import os
+import platform
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+IS_LINUX = platform.system() == "Linux"
 
 # Try to import RKNN
 _RKNN_AVAILABLE = False
@@ -89,9 +92,13 @@ class RKNNService:
             self._device_info = info
             return info
 
+        if not IS_LINUX:
+            # NPU sysfs paths only exist on Linux
+            info.device_name = "RK3588 NPU (unavailable on this platform)"
+            self._device_info = info
+            return info
+
         try:
-            # Check for RKNN driver
-            npu_driver_path = "/sys/class/devfreq"
             npu_paths = [
                 "/sys/class/misc/npu",
                 "/dev/rknpu",
@@ -106,7 +113,6 @@ class RKNNService:
                 info.device_name = "RK3588 NPU"
                 info.core_count = 3  # RK3588 has 3 NPU cores
 
-                # Try to read driver version
                 version_path = "/sys/kernel/debug/rknpu/version"
                 if os.path.exists(version_path):
                     try:

@@ -13,6 +13,7 @@ Usage:
 import argparse
 import os
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -143,11 +144,11 @@ def convert_model(args):
     dataset_path = args.dataset if do_quantize else None
 
     if do_quantize and dataset_path:
-        # Create calibration dataset file
-        dataset_file = "/tmp/rknn_calibration.txt"
+        # Create calibration dataset file (cross-platform temp directory)
+        tmp_fd, dataset_file = tempfile.mkstemp(suffix=".txt", prefix="rknn_calibration_")
         dataset_dir = Path(dataset_path)
         extensions = {".jpg", ".jpeg", ".png", ".bmp"}
-        with open(dataset_file, "w") as f:
+        with os.fdopen(tmp_fd, "w") as f:
             for img in sorted(dataset_dir.iterdir()):
                 if img.suffix.lower() in extensions:
                     f.write(str(img.absolute()) + "\n")

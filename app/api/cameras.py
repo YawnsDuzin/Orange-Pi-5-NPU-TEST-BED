@@ -54,8 +54,8 @@ async def list_cameras_html(
         state = states.get(cid, CameraState(id=cid, name=stream.config.name))
         cameras.append({"config": stream.config, "state": state})
     return templates.TemplateResponse(
-        "components/camera_list.html",
-        {"request": request, "cameras": cameras},
+        request, "components/camera_list.html",
+        {"cameras": cameras},
     )
 
 

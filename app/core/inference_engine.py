@@ -545,7 +545,7 @@ class InferenceEngine:
 
             wrapper = RKNNModelWrapper(model_info)
 
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             t0 = time.perf_counter()
             await loop.run_in_executor(None, wrapper.load, core_mask)
             load_time_ms = (time.perf_counter() - t0) * 1000
@@ -582,7 +582,7 @@ class InferenceEngine:
                 nms_threshold=self._settings.default_nms_threshold,
             )
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, model.infer, frame, config)
         result.camera_id = camera_id
 
@@ -618,7 +618,7 @@ class InferenceEngine:
         if model is None:
             return
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, model.release)
         del self._models[model_id]
 
@@ -655,7 +655,7 @@ class _InferenceStatsTracker:
             avg_inference_ms=sum(times) / len(times) if times else 0,
             min_inference_ms=min(times) if times else 0,
             max_inference_ms=max(times) if times else 0,
-            avg_fps=self._fps_counter.update() if self._total_frames > 0 else 0,
+            avg_fps=self._fps_counter.get_fps(),
             avg_objects_per_frame=sum(objects) / len(objects) if objects else 0,
             uptime_seconds=time.monotonic() - self._start_time,
         )
@@ -668,11 +668,20 @@ class FPSCounter:
         self._timestamps: deque = deque(maxlen=window_size)
 
     def update(self) -> float:
+        """Record a new timestamp and return current FPS."""
         now = time.monotonic()
         self._timestamps.append(now)
+        return self.get_fps()
+
+    def get_fps(self) -> float:
+        """Calculate current FPS without recording a new timestamp."""
         if len(self._timestamps) < 2:
             return 0.0
         elapsed = self._timestamps[-1] - self._timestamps[0]
         if elapsed <= 0:
             return 0.0
         return (len(self._timestamps) - 1) / elapsed
+
+    def reset(self) -> None:
+        """Clear all timestamps."""
+        self._timestamps.clear()

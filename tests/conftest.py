@@ -4,25 +4,20 @@ Pytest Configuration and Shared Fixtures
 Provides test client, mock services, and common test data.
 """
 
-import asyncio
 from pathlib import Path
-from typing import AsyncGenerator
-from unittest.mock import MagicMock
+from typing import Generator
 
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
-from httpx import ASGITransport, AsyncClient
 
 from app.config import AppSettings, CameraSettings, InferenceSettings, StreamSettings
 from app.core.camera_manager import CameraManager
 from app.core.event_handler import EventHandler
 from app.core.inference_engine import InferenceEngine
-from app.core.model_registry import ModelRegistry
 from app.core.roi_manager import ROIManager
 from app.core.stream_publisher import StreamPublisher
 from app.main import create_app
-from app.services.system_monitor import SystemMonitor
 
 
 @pytest.fixture
@@ -91,7 +86,8 @@ def sample_frame() -> np.ndarray:
 
 
 @pytest.fixture
-def test_client() -> TestClient:
-    """Create FastAPI test client."""
+def test_client() -> Generator[TestClient, None, None]:
+    """Create FastAPI test client with lifespan context."""
     app = create_app()
-    return TestClient(app)
+    with TestClient(app) as client:
+        yield client

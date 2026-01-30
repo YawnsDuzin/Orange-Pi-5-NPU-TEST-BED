@@ -33,6 +33,10 @@ data/logs/*.log
 data/snapshots/*.jpg
 data/snapshots/*.png
 data/config.json
+data/roi_presets/*.json
+
+# Model metadata (runtime generated)
+models/model_metadata.json
 
 # RKNN models (large binary files)
 models/**/*.rknn

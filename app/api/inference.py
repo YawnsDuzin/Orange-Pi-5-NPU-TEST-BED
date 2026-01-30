@@ -15,6 +15,7 @@ from app.core.inference_engine import InferenceEngine
 from app.core.model_registry import ModelRegistry
 from app.dependencies import (
     get_camera_manager,
+    get_frame_processor,
     get_inference_engine,
     get_model_registry,
 )
@@ -22,24 +23,6 @@ from app.models.inference import InferenceConfig, InferenceControl, InferenceSta
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(APP_DIR / "templates"))
-
-# Frame processor will be initialized as a dependency
-_frame_processor = None
-
-
-def get_frame_processor(request: Request) -> FrameProcessor:
-    """Get or create frame processor."""
-    global _frame_processor
-    if _frame_processor is None:
-        app = request.app
-        _frame_processor = FrameProcessor(
-            camera_manager=app.state.camera_manager,
-            inference_engine=app.state.inference_engine,
-            roi_manager=app.state.roi_manager,
-            stream_publisher=app.state.stream_publisher,
-            event_handler=app.state.event_handler,
-        )
-    return _frame_processor
 
 
 @router.post("/start")
@@ -161,9 +144,8 @@ async def inference_panel_html(
     config = pipeline.inference_config if pipeline else InferenceConfig()
 
     return templates.TemplateResponse(
-        "components/inference_panel.html",
+        request, "components/inference_panel.html",
         {
-            "request": request,
             "camera_id": camera_id,
             "is_running": is_running,
             "config": config,

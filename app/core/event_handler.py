@@ -141,7 +141,7 @@ class EventHandler:
             filename = f"{camera_id}_{event_type}_{timestamp}.jpg"
             filepath = self._snapshots_dir / filename
 
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             await loop.run_in_executor(
                 None,
                 lambda: cv2.imwrite(

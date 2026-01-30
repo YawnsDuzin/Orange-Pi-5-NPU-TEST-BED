@@ -15,8 +15,8 @@
     <!-- Add camera form -->
     <div id="add-camera-form" class="hidden bg-gray-800 rounded-xl border border-gray-700 p-6">
         <h2 class="text-lg font-semibold mb-4">Add New Camera</h2>
-        <form hx-post="/api/cameras" hx-target="#cameras-grid" hx-swap="innerHTML"
-              hx-on::after-request="this.reset(); document.getElementById('add-camera-form').classList.add('hidden')">
+        <form hx-post="/api/cameras" hx-ext="json-enc" hx-swap="none"
+              hx-on::after-request="if (event.detail.successful) { this.reset(); document.getElementById('add-camera-form').classList.add('hidden'); htmx.ajax('GET', '/api/cameras/list', '#cameras-grid'); }">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm text-gray-400 mb-1">Name</label>
@@ -60,7 +60,7 @@
 
     <!-- Cameras grid -->
     <div id="cameras-grid"
-         hx-get="/api/cameras"
+         hx-get="/api/cameras/list"
          hx-trigger="load, every 5s"
          hx-swap="innerHTML"
          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

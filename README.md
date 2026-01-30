@@ -235,9 +235,12 @@ Orange-Pi-5-NPU-TEST-BED/
 │   ├── snapshots/                #   캡처된 스냅샷 이미지
 │   └── logs/                     #   애플리케이션 로그
 ├── scripts/                      # 유틸리티 스크립트
-│   ├── install_deps.sh           #   의존성 자동 설치
+│   ├── install_deps.sh           #   의존성 자동 설치 (Linux)
+│   ├── install_deps.ps1          #   의존성 자동 설치 (Windows PowerShell)
+│   ├── install_deps.bat          #   의존성 자동 설치 (Windows CMD)
 │   ├── convert_model.py          #   ONNX -> RKNN 변환
 │   └── benchmark.py              #   모델 벤치마크 도구
+├── run.bat                       # Windows 빠른 실행 스크립트
 ├── tests/                        # 테스트 코드
 │   ├── conftest.py
 │   ├── test_api.py
@@ -267,19 +270,25 @@ Orange-Pi-5-NPU-TEST-BED/
 
 ### 사전 요구사항
 
-**하드웨어:**
+**하드웨어 (배포 환경):**
 - Orange Pi 5 Plus (RK3588) 또는 RK3588 기반 SBC
 - RAM 8GB 이상 권장
 - NPU 드라이버 설치 완료 (`/dev/dri` 접근 가능)
 - (선택) USB 카메라, CSI 카메라, 또는 RTSP 지원 IP 카메라
 
-**소프트웨어:**
-- Ubuntu 22.04 (aarch64) 또는 호환 Linux 배포판
-- Python 3.10 이상
-- Node.js 18+ 및 npm (Tailwind CSS 빌드용)
-- RKNN Toolkit2 Lite 2.0+ ([rockchip-linux/rknn-toolkit2](https://github.com/rockchip-linux/rknn-toolkit2))
+**하드웨어 (개발/테스트 환경):**
+- Windows 10/11, macOS, 또는 Linux x86_64 PC
+- 웹캠(USB 카메라) 또는 RTSP 스트림 (선택사항)
+- NPU 추론은 Mock 모드로 동작합니다
 
-### 설치
+**소프트웨어:**
+- Python 3.10 이상
+- Node.js 18+ 및 npm (Tailwind CSS 빌드용, 선택)
+- RKNN Toolkit2 Lite 2.0+ (Orange Pi 5 배포 시에만 필요, [rockchip-linux/rknn-toolkit2](https://github.com/rockchip-linux/rknn-toolkit2))
+
+---
+
+### 설치 - Linux (Orange Pi 5 / Ubuntu)
 
 **1. 저장소 클론**
 
@@ -336,6 +345,87 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 브라우저에서 `http://<장치-IP>:8000` 으로 접속합니다.
+
+---
+
+### 설치 - Windows
+
+> **참고:** Windows에서는 NPU 추론이 Mock 모드로 동작합니다. 웹 UI, 카메라 관리, ROI 편집기, 시스템 모니터링 등 모든 기능을 개발/테스트할 수 있습니다.
+
+**1. 저장소 클론**
+
+```powershell
+git clone https://github.com/YawnsDuzin/Orange-Pi-5-NPU-TEST-BED.git
+cd Orange-Pi-5-NPU-TEST-BED
+```
+
+**2. 자동 설치 (권장)**
+
+PowerShell에서 실행:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\install_deps.ps1
+```
+
+또는 CMD에서 실행:
+
+```cmd
+scripts\install_deps.bat
+```
+
+**3. 수동 설치**
+
+```powershell
+# Python 가상 환경 생성 및 활성화
+python -m venv .venv
+.venv\Scripts\activate
+
+# Python 의존성 설치
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# Tailwind CSS 빌드 (선택 - Node.js 필요)
+npm install
+npm run build:css
+
+# 데이터 디렉토리 생성 (자동으로 생성되지만, 미리 만들 수도 있음)
+mkdir data\roi_presets data\snapshots data\logs
+mkdir models\detection models\segmentation models\pose models\face models\ocr models\classification
+```
+
+**4. 환경 설정**
+
+```powershell
+copy .env.example .env
+# 메모장 또는 VS Code로 .env 파일 수정
+notepad .env
+```
+
+**5. 서버 실행**
+
+```powershell
+.venv\Scripts\activate
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+또는 빠른 실행 스크립트:
+
+```cmd
+run.bat
+```
+
+브라우저에서 `http://127.0.0.1:8000` 으로 접속합니다.
+
+### Windows 참고사항
+
+| 항목 | 설명 |
+|------|------|
+| NPU 추론 | Mock 모드로 동작 (RKNN은 ARM64 Linux 전용) |
+| 카메라 | USB 웹캠(DirectShow), RTSP 스트림, 비디오 파일 지원 |
+| 시스템 모니터링 | `psutil` 기반 크로스 플랫폼 모니터링 (CPU, 메모리, 디스크, 네트워크) |
+| 온도 센서 | Windows에서 제한적 지원 (psutil `sensors_temperatures`) |
+| CSI 카메라 | Windows 미지원 (Orange Pi 전용 하드웨어) |
+| 이벤트 루프 | `WindowsSelectorEventLoopPolicy` 자동 설정 |
 
 **6. 모델 추가**
 
@@ -801,12 +891,39 @@ ERROR: Camera connection timeout
 ### 포트 충돌
 
 ```
-ERROR: [Errno 98] Address already in use
+ERROR: [Errno 98] Address already in use          (Linux)
+ERROR: [WinError 10048] Only one usage ...        (Windows)
 ```
 
 **해결 방법:**
-- 기존 프로세스 확인 및 종료: `lsof -i :8000` 또는 `fuser -k 8000/tcp`
+- Linux: `lsof -i :8000` 또는 `fuser -k 8000/tcp`
+- Windows: `netstat -ano | findstr :8000` 후 `taskkill /PID <PID> /F`
 - `.env`에서 `SERVER_PORT`를 다른 값으로 변경
+
+### Windows에서 asyncio 관련 오류
+
+```
+RuntimeError: Event loop is closed
+NotImplementedError: Proactor event loop does not implement ...
+```
+
+**해결 방법:**
+- `app/main.py`에서 `asyncio.WindowsSelectorEventLoopPolicy()`가 설정되어 있는지 확인 (v1.1.0+에서 자동 설정)
+- Python 3.10 이상 사용 권장
+- `uvicorn`을 `--loop uvloop` 없이 실행 (uvloop은 Windows 미지원)
+
+### Windows에서 psutil 미설치 경고
+
+```
+WARNING: psutil not installed - system metrics will be limited
+```
+
+**해결 방법:**
+```powershell
+pip install psutil
+```
+
+> `psutil`은 `requirements.txt`에 포함되어 있으므로 `pip install -r requirements.txt`로 자동 설치됩니다.
 
 ### WebSocket 연결 끊김
 
@@ -877,3 +994,48 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+---
+
+## 변경 이력
+
+### v1.1.0 - Windows 크로스 플랫폼 지원
+
+**크로스 플랫폼 호환성:**
+- `SystemMonitor`: Linux sysfs(`/proc`, `/sys`) 의존 코드를 `psutil` 기반 크로스 플랫폼 코드로 분리
+  - CPU, 메모리, 디스크, 네트워크, 온도 모니터링 모두 Windows/macOS 지원
+  - `shutil.disk_usage()` 사용으로 `os.statvfs()` (Linux 전용) 대체
+  - `fcntl.ioctl()` (Linux 전용) 대신 `psutil.net_if_addrs()` 사용
+- `CameraManager`: Windows에서 USB 카메라 사용 시 DirectShow(`cv2.CAP_DSHOW`) 백엔드 자동 선택
+- `main.py`: Windows에서 `asyncio.WindowsSelectorEventLoopPolicy()` 자동 설정 (uvicorn 호환)
+- `RKNNService`: 비-Linux 플랫폼에서 `/sys`, `/dev` 경로 접근 시도 방지
+- `convert_model.py`: `/tmp` 하드코딩 → `tempfile.mkstemp()` 크로스 플랫폼 임시 파일 사용
+- `requirements.txt`: `psutil>=5.9.0` 의존성 추가 (Windows/macOS 시스템 모니터링)
+
+**Windows 설치/실행 스크립트:**
+- `scripts/install_deps.ps1` -- Windows PowerShell 자동 설치 스크립트
+- `scripts/install_deps.bat` -- Windows CMD 자동 설치 스크립트
+- `run.bat` -- Windows 빠른 실행 스크립트
+
+**문서 업데이트:**
+- README에 Windows 설치 및 실행 가이드 추가
+- Windows 참고사항 (Mock 모드, DirectShow, psutil 모니터링) 안내
+
+### v1.0.1 - QA 검증 및 안정성 개선
+
+**버그 수정:**
+- `EventHandler` 초기화 시 `snapshots_dir` 미전달 → 이벤트 스냅샷 저장 가능하도록 수정
+- `FrameProcessor`가 `app.state`에 등록되지 않던 문제 수정 → 의존성 주입 및 생명주기 관리 정상화
+- `_InferenceStatsTracker.to_stats()`에서 `fps_counter.update()` 호출 시 부수효과 발생 → 읽기 전용 `get_fps()` 메서드로 분리
+- `asyncio.get_event_loop()` 사용으로 인한 Python 3.10+ 폐기 경고 → `asyncio.get_running_loop()`로 전환
+- `TemplateResponse(name, ctx)` 폐기 API → `TemplateResponse(request, name, ctx)` 신규 API로 전환
+- paho-mqtt v2 호환성 문제 → `CallbackAPIVersion` 자동 감지 + v1 fallback 구현
+- HTMX 폼이 JSON 대신 form-encoded 전송하던 문제 → `json-enc` 확장 적용 및 올바른 엔드포인트 연결
+- 테스트 `test_client` fixture가 lifespan을 트리거하지 않던 문제 → 컨텍스트 매니저 사용으로 수정
+
+**개선:**
+- `FPSCounter` 클래스에 `get_fps()` (읽기 전용) 메서드 추가
+- 의존성 주입에 `get_frame_processor()` 함수 추가
+- 앱 종료 시 `FrameProcessor.stop_all()` 호출하여 파이프라인 정리
+- 모든 테스트 52건 통과 확인 (API, Camera, Inference, ROI)
+- 서버 시작/종료 정상 동작 확인

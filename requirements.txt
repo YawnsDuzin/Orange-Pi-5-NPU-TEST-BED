@@ -17,6 +17,9 @@ pydantic-settings>=2.1.0
 opencv-python-headless>=4.9.0
 numpy>=1.26.0
 
+# System Monitoring (cross-platform fallback for Windows/macOS)
+psutil>=5.9.0
+
 # RKNN Runtime (install separately on Orange Pi 5)
 # rknn-toolkit2-lite>=2.0.0
 

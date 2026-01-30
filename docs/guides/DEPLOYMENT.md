@@ -2,7 +2,7 @@
 
 > **Orange Pi 5 Plus (RK3588) NPU 실시간 추론 테스트 플랫폼**
 >
-> 버전: 1.0.0
+> 버전: 1.1.0
 
 ---
 
@@ -22,6 +22,7 @@
 12. [백업 및 복구 (Backup and Recovery)](#12-백업-및-복구-backup-and-recovery)
 13. [보안 권고사항 (Security Recommendations)](#13-보안-권고사항-security-recommendations)
 14. [문제 해결 (Troubleshooting)](#14-문제-해결-troubleshooting)
+15. [Windows 개발 환경 (Development on Windows)](#15-windows-개발-환경-development-on-windows)
 
 ---
 
@@ -1522,6 +1523,72 @@ export SERVER_LOG_LEVEL=warning
 5. **네트워크 확인**: `ping`, `nc -zv`, 방화벽 규칙
 6. **재시작**: `sudo systemctl restart npu-platform`
 7. **수동 실행**: 서비스 중지 후 터미널에서 직접 실행하여 상세 오류 확인
+
+---
+
+## 15. Windows 개발 환경 (Development on Windows)
+
+프로덕션은 Linux(Orange Pi 5)에서 실행하지만, **개발 및 테스트는 Windows PC**에서 가능합니다.
+
+### 15.1 Windows 설치
+
+```powershell
+# PowerShell 사용 (권장)
+git clone https://github.com/YawnsDuzin/Orange-Pi-5-NPU-TEST-BED.git
+cd Orange-Pi-5-NPU-TEST-BED
+powershell -ExecutionPolicy Bypass -File scripts\install_deps.ps1
+
+# 또는 CMD 사용
+scripts\install_deps.bat
+```
+
+### 15.2 실행
+
+```powershell
+# 가상 환경 활성화
+.venv\Scripts\activate
+
+# 서버 시작
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+# 또는 빠른 실행
+run.bat
+```
+
+### 15.3 Windows에서의 제약사항
+
+| 기능 | 상태 | 비고 |
+|------|------|------|
+| 웹 UI | 완전 지원 | 모든 페이지, HTMX 동작 |
+| REST API | 완전 지원 | 모든 엔드포인트 동작 |
+| 카메라 (USB) | 지원 | DirectShow 백엔드 사용 |
+| 카메라 (RTSP) | 지원 | FFmpeg 백엔드 사용 |
+| 카메라 (CSI) | 미지원 | Orange Pi 전용 하드웨어 |
+| NPU 추론 | Mock 모드 | RKNN은 ARM64 Linux 전용 |
+| 시스템 모니터링 | 지원 | psutil 기반 (CPU/메모리/디스크/네트워크) |
+| 온도 센서 | 제한적 | Windows에서 psutil `sensors_temperatures` 제한 |
+| ROI 편집기 | 완전 지원 | Canvas 기반, 플랫폼 독립 |
+| MQTT 알림 | 지원 | paho-mqtt 크로스 플랫폼 |
+| Webhook 알림 | 지원 | httpx 크로스 플랫폼 |
+| 테스트 | 완전 지원 | `pytest tests/ -v` |
+
+### 15.4 Windows 트러블슈팅
+
+**asyncio 오류** (`RuntimeError: Event loop is closed`):
+- `app/main.py`에서 `asyncio.WindowsSelectorEventLoopPolicy()` 자동 설정 (v1.1.0+)
+
+**psutil 미설치**:
+```powershell
+pip install psutil
+```
+
+**포트 충돌**:
+```powershell
+# 포트 사용 프로세스 확인
+netstat -ano | findstr :8000
+# PID로 프로세스 종료
+taskkill /PID <PID> /F
+```
 
 ---
 

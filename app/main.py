@@ -3,12 +3,19 @@ NPU Inference Platform - FastAPI Application Entry Point
 
 Orange Pi 5 Plus (RK3588) NPU real-time inference test platform.
 Provides a web-based interface for managing cameras, models, ROI, and inference.
+Cross-platform: fully supported on Linux (ARM64/x86), Windows, and macOS.
 """
 
+import asyncio
 import logging
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+# Windows requires SelectorEventLoopPolicy for uvicorn compatibility.
+# This must be set before any asyncio operations.
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,6 +27,7 @@ from app.api import cameras, inference, models, roi, stream, system
 from app.config import APP_DIR, AppSettings, get_settings
 from app.core.camera_manager import CameraManager
 from app.core.event_handler import EventHandler
+from app.core.frame_processor import FrameProcessor
 from app.core.inference_engine import InferenceEngine
 from app.core.model_registry import ModelRegistry
 from app.core.roi_manager import ROIManager
@@ -81,9 +89,21 @@ async def lifespan(app: FastAPI):
     inference_engine = InferenceEngine(settings.inference)
     roi_manager = ROIManager(settings.storage.data_dir / "roi_presets")
     stream_publisher = StreamPublisher(settings.stream)
-    event_handler = EventHandler()
+    event_handler = EventHandler(
+        max_history=1000,
+        snapshots_dir=settings.storage.data_dir / "snapshots",
+    )
     notification_service = NotificationService(settings.notification)
     system_monitor = SystemMonitor()
+
+    # Create frame processor (pipeline orchestrator)
+    frame_processor = FrameProcessor(
+        camera_manager=camera_manager,
+        inference_engine=inference_engine,
+        roi_manager=roi_manager,
+        stream_publisher=stream_publisher,
+        event_handler=event_handler,
+    )
 
     # Store in app state for dependency injection
     app.state.settings = settings
@@ -93,6 +113,7 @@ async def lifespan(app: FastAPI):
     app.state.roi_manager = roi_manager
     app.state.stream_publisher = stream_publisher
     app.state.event_handler = event_handler
+    app.state.frame_processor = frame_processor
     app.state.notification_service = notification_service
     app.state.system_monitor = system_monitor
 
@@ -112,6 +133,7 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Shutting down services...")
+    await frame_processor.stop_all()
     await camera_manager.stop_all()
     await inference_engine.unload_all()
     await system_monitor.stop()
@@ -161,9 +183,8 @@ def create_app() -> FastAPI:
     async def index(request: Request):
         """Main dashboard page."""
         return templates.TemplateResponse(
-            "index.html",
+            request, "index.html",
             {
-                "request": request,
                 "app_name": settings.app_name,
                 "app_version": settings.app_version,
             },
@@ -173,32 +194,32 @@ def create_app() -> FastAPI:
     async def cameras_page(request: Request):
         """Camera management page."""
         return templates.TemplateResponse(
-            "pages/cameras.html",
-            {"request": request, "app_name": settings.app_name},
+            request, "pages/cameras.html",
+            {"app_name": settings.app_name},
         )
 
     @app.get("/models", response_class=HTMLResponse)
     async def models_page(request: Request):
         """Model management page."""
         return templates.TemplateResponse(
-            "pages/models.html",
-            {"request": request, "app_name": settings.app_name},
+            request, "pages/models.html",
+            {"app_name": settings.app_name},
         )
 
     @app.get("/monitor", response_class=HTMLResponse)
     async def monitor_page(request: Request):
         """Real-time monitoring page."""
         return templates.TemplateResponse(
-            "pages/monitor.html",
-            {"request": request, "app_name": settings.app_name},
+            request, "pages/monitor.html",
+            {"app_name": settings.app_name},
         )
 
     @app.get("/settings", response_class=HTMLResponse)
     async def settings_page(request: Request):
         """System settings page."""
         return templates.TemplateResponse(
-            "pages/settings.html",
-            {"request": request, "app_name": settings.app_name},
+            request, "pages/settings.html",
+            {"app_name": settings.app_name},
         )
 
     return app
