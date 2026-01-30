@@ -8,6 +8,7 @@ Designed for reliability with graceful error handling and resource cleanup.
 
 import asyncio
 import logging
+import platform
 import time
 from typing import Callable, Optional
 
@@ -16,6 +17,8 @@ import numpy as np
 
 from app.config import CameraSettings
 from app.models.camera import CameraConfig, CameraState, CameraStatus, CameraType
+
+IS_WINDOWS = platform.system() == "Windows"
 
 logger = logging.getLogger(__name__)
 
@@ -155,12 +158,17 @@ class CameraStream:
         return self.config.url
 
     def _get_backend(self) -> int:
-        """Get appropriate OpenCV backend."""
+        """Get appropriate OpenCV backend for the current platform."""
         if self.config.camera_type in (CameraType.RTSP, CameraType.FILE):
             return cv2.CAP_FFMPEG
         if self.config.camera_type == CameraType.CSI:
+            if IS_WINDOWS:
+                return cv2.CAP_FFMPEG  # GStreamer CSI is ARM/Linux only
             return cv2.CAP_GSTREAMER
-        return cv2.CAP_V4L2
+        # USB cameras: platform-specific backend
+        if IS_WINDOWS:
+            return cv2.CAP_DSHOW  # DirectShow for Windows
+        return cv2.CAP_V4L2  # Video4Linux for Linux
 
     async def _capture_loop(self) -> None:
         """Main capture loop with automatic reconnection."""

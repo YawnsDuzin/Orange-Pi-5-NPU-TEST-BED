@@ -3,12 +3,19 @@ NPU Inference Platform - FastAPI Application Entry Point
 
 Orange Pi 5 Plus (RK3588) NPU real-time inference test platform.
 Provides a web-based interface for managing cameras, models, ROI, and inference.
+Cross-platform: fully supported on Linux (ARM64/x86), Windows, and macOS.
 """
 
+import asyncio
 import logging
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+# Windows requires SelectorEventLoopPolicy for uvicorn compatibility.
+# This must be set before any asyncio operations.
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
