@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="/static/css/app.css">
 
     <!-- HTMX -->
-    <script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0s9Gm0wk/BYCxEhSIN+BI1TTKpcLHFVr14iW3N" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
     <!-- HTMX extensions -->
     <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/ws.js"></script>
     <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/json-enc.js"></script>
@@ -46,12 +46,13 @@
                     <div class="flex items-center gap-3">
                         <!-- System status indicator -->
                         <div id="system-indicator"
-                             hx-get="/api/system/health"
-                             hx-trigger="every 5s"
-                             hx-swap="innerHTML"
-                             class="flex items-center gap-2 text-sm">
-                            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                            <span class="text-gray-400">System OK</span>
+                             hx-get="/api/system/health/indicator"
+                             hx-trigger="load, every 5s"
+                             hx-swap="innerHTML">
+                            <div class="flex items-center gap-2 text-sm">
+                                <span class="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></span>
+                                <span class="text-gray-400">Loading...</span>
+                            </div>
                         </div>
                         <a href="/settings" class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-700 transition">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

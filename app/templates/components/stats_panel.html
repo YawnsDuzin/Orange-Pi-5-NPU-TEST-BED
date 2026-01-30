@@ -33,6 +33,26 @@
                 {% else %}bg-indigo-500{% endif %}"
                  style="width: {{ status.npu.usage_percent }}%"></div>
         </div>
+
+        <!-- NPU Per-Core Usage -->
+        {% if status.npu.available and status.npu.per_core_usage|length == 3 %}
+        <div class="mt-2 space-y-1.5">
+            {% for i in range(3) %}
+            <div class="flex items-center gap-2">
+                <span class="text-gray-500 text-xs font-mono w-14">Core{{ i }}</span>
+                <div class="flex-1 bg-gray-700 rounded-full h-1.5">
+                    <div class="h-1.5 rounded-full transition-all duration-500
+                        {% if status.npu.per_core_usage[i] > 80 %}bg-purple-500
+                        {% else %}bg-indigo-500{% endif %}"
+                         style="width: {{ status.npu.per_core_usage[i] }}%"></div>
+                </div>
+                <span class="text-gray-400 text-xs font-mono w-10 text-right">
+                    {{ "%.0f"|format(status.npu.per_core_usage[i]) }}%
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
 
     <!-- Memory -->

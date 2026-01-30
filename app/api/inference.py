@@ -118,6 +118,39 @@ async def inference_status(
     return result
 
 
+@router.get("/stats")
+async def get_all_inference_stats(
+    frame_processor: FrameProcessor = Depends(get_frame_processor),
+    inference_engine: InferenceEngine = Depends(get_inference_engine),
+):
+    """Get aggregated inference statistics from all active pipelines."""
+    # Find first running pipeline to get stats
+    active_model_id = inference_engine.active_model_id
+    if not active_model_id:
+        return {
+            "inference_ms": 0,
+            "total_ms": 0,
+            "fps": 0,
+            "has_data": False,
+        }
+
+    stats = inference_engine.get_stats(active_model_id)
+    if not stats:
+        return {
+            "inference_ms": 0,
+            "total_ms": 0,
+            "fps": 0,
+            "has_data": False,
+        }
+
+    return {
+        "inference_ms": round(stats.avg_inference_ms, 1),
+        "total_ms": round(stats.avg_inference_ms, 1),  # Simplified for now
+        "fps": round(stats.avg_fps, 1),
+        "has_data": True,
+    }
+
+
 @router.get("/stats/{model_id}", response_model=InferenceStats)
 async def get_inference_stats(
     model_id: str,
@@ -129,6 +162,30 @@ async def get_inference_stats(
     if stats is None:
         raise HTTPException(status_code=404, detail="No stats available")
     return stats
+
+
+@router.get("/status-panel", response_class=HTMLResponse)
+async def inference_status_panel(
+    request: Request,
+    camera_id: str = "",
+    inference_engine: InferenceEngine = Depends(get_inference_engine),
+    frame_processor: FrameProcessor = Depends(get_frame_processor),
+):
+    """Inference performance overlay as HTMX partial."""
+    is_running = frame_processor.is_running(camera_id) if camera_id else False
+    pipeline = frame_processor.get_pipeline_config(camera_id) if camera_id else None
+    stats = None
+    if pipeline:
+        stats = inference_engine.get_stats(pipeline.model_id, camera_id)
+
+    return templates.TemplateResponse(
+        request, "components/perf_stats.html",
+        {
+            "camera_id": camera_id,
+            "is_running": is_running,
+            "stats": stats,
+        },
+    )
 
 
 @router.get("/panel", response_class=HTMLResponse)

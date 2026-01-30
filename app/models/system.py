@@ -24,6 +24,7 @@ class NPUInfo(BaseModel):
     available: bool = Field(default=False, description="NPU available")
     core_count: int = Field(default=3, description="Number of NPU cores")
     driver_version: str = Field(default="", description="NPU driver version")
+    per_core_usage: list[float] = Field(default_factory=list, description="Per-core usage (Core0, Core1, Core2)")
 
 
 class MemoryInfo(BaseModel):

@@ -6,6 +6,7 @@ MJPEG and WebSocket streaming endpoints for real-time video.
 
 import asyncio
 import logging
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
@@ -30,32 +31,45 @@ async def mjpeg_stream(
         raise HTTPException(status_code=404, detail="Camera not found")
 
     queue = stream_publisher.create_mjpeg_queue(camera_id)
+    max_fps = stream_publisher._settings.mjpeg_max_fps
+    quality = stream_publisher._settings.mjpeg_quality
+    min_interval = 1.0 / max_fps
 
     async def generate():
+        last_send = 0.0
+        loop = asyncio.get_running_loop()
         try:
             while True:
+                jpeg_bytes = None
+
+                # Try to get a frame from the inference pipeline queue
                 try:
-                    jpeg_bytes = await asyncio.wait_for(queue.get(), timeout=10.0)
-                    yield (
-                        b"--frame\r\n"
-                        b"Content-Type: image/jpeg\r\n\r\n"
-                        + jpeg_bytes
-                        + b"\r\n"
-                    )
+                    jpeg_bytes = await asyncio.wait_for(queue.get(), timeout=0.1)
                 except asyncio.TimeoutError:
-                    # Send keep-alive frame
+                    # No inference pipeline publishing — stream raw camera frames
                     frame = camera_manager.get_frame(camera_id)
                     if frame is not None:
-                        jpeg_bytes = frame_to_jpeg(frame, quality=70)
-                        yield (
-                            b"--frame\r\n"
-                            b"Content-Type: image/jpeg\r\n\r\n"
-                            + jpeg_bytes
-                            + b"\r\n"
+                        jpeg_bytes = await loop.run_in_executor(
+                            None, frame_to_jpeg, frame, quality
                         )
-                    else:
-                        # Send a minimal JPEG to keep connection alive
-                        yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n\r\n"
+
+                if jpeg_bytes is None:
+                    await asyncio.sleep(0.05)
+                    continue
+
+                # Rate limiting
+                now = time.monotonic()
+                elapsed = now - last_send
+                if elapsed < min_interval:
+                    await asyncio.sleep(min_interval - elapsed)
+                last_send = time.monotonic()
+
+                yield (
+                    b"--frame\r\n"
+                    b"Content-Type: image/jpeg\r\n\r\n"
+                    + jpeg_bytes
+                    + b"\r\n"
+                )
         except asyncio.CancelledError:
             pass
         finally:

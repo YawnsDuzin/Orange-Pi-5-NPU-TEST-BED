@@ -3,15 +3,16 @@
 {% block nav_models %}text-white bg-gray-700{% endblock %}
 
 {% block content %}
-<div class="space-y-4">
+<div class="space-y-4" x-data="{ showUploadForm: false }">
     <div class="flex items-center justify-between">
         <h1 class="text-xl font-bold text-white">Model Management</h1>
         <div class="flex gap-2">
             <button hx-post="/api/models/scan" hx-swap="none"
+                    @htmx:after-request="htmx.ajax('GET', '/api/models/list', '#models-grid')"
                     class="bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm px-4 py-2 rounded-lg transition">
                 Scan Directory
             </button>
-            <button onclick="document.getElementById('upload-form').classList.toggle('hidden')"
+            <button @click="showUploadForm = true; $nextTick(() => $refs.uploadForm.reset())"
                     class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg transition">
                 Upload Model
             </button>
@@ -19,11 +20,11 @@
     </div>
 
     <!-- Upload form -->
-    <div id="upload-form" class="hidden bg-gray-800 rounded-xl border border-gray-700 p-6">
+    <div x-show="showUploadForm" x-transition class="bg-gray-800 rounded-xl border border-gray-700 p-6">
         <h2 class="text-lg font-semibold mb-4">Upload RKNN Model</h2>
-        <form hx-post="/api/models/upload" hx-swap="none"
+        <form x-ref="uploadForm" hx-post="/api/models/upload" hx-swap="none"
               hx-encoding="multipart/form-data"
-              hx-on::after-request="if (event.detail.successful) { this.reset(); document.getElementById('upload-form').classList.add('hidden'); htmx.ajax('GET', '/api/models/list', '#models-grid'); }">
+              @htmx:after-request.camel="if ($event.detail.successful) { $el.reset(); showUploadForm = false; htmx.ajax('GET', '/api/models/list', '#models-grid'); }">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="md:col-span-2">
                     <label class="block text-sm text-gray-400 mb-1">Model File (.rknn)</label>
@@ -54,7 +55,7 @@
                 </div>
             </div>
             <div class="flex justify-end gap-2 mt-4">
-                <button type="button" onclick="document.getElementById('upload-form').classList.add('hidden')"
+                <button type="button" @click="$refs.uploadForm.reset(); showUploadForm = false"
                         class="px-4 py-2 text-sm text-gray-400 hover:text-white transition">Cancel</button>
                 <button type="submit" class="px-6 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">
                     Upload

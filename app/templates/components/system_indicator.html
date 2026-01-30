@@ -1,0 +1,14 @@
+<!-- System health indicator component -->
+<div class="flex items-center gap-2 text-sm">
+    {% if health.status == 'ok' %}
+    <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+    <span class="text-gray-400">System OK</span>
+    {% else %}
+    <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+    <span class="text-red-400">System Error</span>
+    {% endif %}
+    {% if health.cameras_connected > 0 %}
+    <span class="text-gray-500">·</span>
+    <span class="text-gray-400">{{ health.cameras_connected }} cam</span>
+    {% endif %}
+</div>

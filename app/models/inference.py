@@ -163,6 +163,10 @@ class InferenceResult(BaseModel):
     # Aggregate metrics
     object_count: int = 0
     fps: float = 0.0
+    frames_since_inference: int = Field(
+        default=0,
+        description="Number of frames since this result was computed (0 = fresh)",
+    )
 
 
 class InferenceStats(BaseModel):

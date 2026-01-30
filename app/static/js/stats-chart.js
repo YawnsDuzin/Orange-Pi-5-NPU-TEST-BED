@@ -203,6 +203,23 @@ async function pollStats() {
     } catch (e) {
         // Silently handle fetch errors
     }
+
+    // Poll inference stats for charts
+    try {
+        const inferenceResponse = await fetch('/api/inference/stats');
+        if (inferenceResponse.ok) {
+            const inferenceData = await inferenceResponse.json();
+            if (inferenceData.has_data) {
+                updateCharts(
+                    inferenceData.inference_ms,
+                    inferenceData.total_ms,
+                    inferenceData.fps
+                );
+            }
+        }
+    } catch (e) {
+        // Silently handle fetch errors
+    }
 }
 
 // Initialize on page load
@@ -210,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initLatencyChart();
     initFPSChart();
 
-    // Start polling
-    setInterval(pollStats, 3000);
+    // Start polling (every 1 second for smooth chart updates)
+    setInterval(pollStats, 1000);
     pollStats();
 });

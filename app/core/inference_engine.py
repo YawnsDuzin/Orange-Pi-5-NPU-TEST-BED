@@ -169,6 +169,8 @@ class RKNNModelWrapper:
         w, h = self.info.input_size
         img = cv2.resize(frame, (w, h))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        # Add batch dimension: [H, W, C] -> [1, H, W, C]
+        img = np.expand_dims(img, axis=0)
         return img
 
     def _postprocess(
@@ -387,62 +389,96 @@ class RKNNModelWrapper:
         config: InferenceConfig,
     ) -> tuple:
         """
-        Parse YOLO model output into boxes, scores, and class_ids.
-        Handles various YOLO output formats.
+        Parse YOLOv5 raw output (anchor-based) into boxes, scores, and class_ids.
+        Handles format: [(1, 255, 80, 80), (1, 255, 40, 40), (1, 255, 20, 20)]
         """
-        # Default: assume 3 output heads (YOLO v5/v8 style)
-        # This is a simplified parser - real implementation should handle
-        # the specific output format of each model variant
+        # Debug: log output shapes on first inference
+        if not hasattr(self, '_output_shapes_logged'):
+            logger.info(f"YOLO output format - {len(outputs)} outputs:")
+            for i, out in enumerate(outputs):
+                if out is not None:
+                    logger.info(f"  Output[{i}]: shape={np.array(out).shape}, dtype={np.array(out).dtype}")
+            self._output_shapes_logged = True
+
         all_boxes = []
         all_scores = []
         all_class_ids = []
 
+        # YOLOv5 anchors for 640x640 input
+        strides = [8, 16, 32]
+        anchors = [
+            [[10, 13], [16, 30], [33, 23]],      # stride 8
+            [[30, 61], [62, 45], [59, 119]],     # stride 16
+            [[116, 90], [156, 198], [373, 326]]  # stride 32
+        ]
+
+        input_size = self.info.input_size[0]  # Assume square input
+
         try:
-            for output in outputs:
+            for idx, output in enumerate(outputs):
                 if output is None:
                     continue
-                out = np.array(output)
-                if out.ndim == 3:
-                    out = out.reshape(-1, out.shape[-1])
-                if out.ndim != 2:
-                    continue
 
-                num_cols = out.shape[1]
-                if num_cols < 5:
-                    continue
+                output = np.array(output)
+                stride = strides[idx]
+                grid_size = input_size // stride
+                anchor = np.array(anchors[idx], dtype=np.float32)
 
-                # Format: [x_center, y_center, w, h, obj_conf, class_scores...]
-                if num_cols >= 6:
-                    obj_conf = out[:, 4]
-                    class_scores = out[:, 5:]
-                    class_ids = np.argmax(class_scores, axis=1)
-                    scores = obj_conf * class_scores[np.arange(len(class_ids)), class_ids]
-                else:
-                    scores = out[:, 4]
-                    class_ids = np.zeros(len(scores), dtype=int)
+                # Reshape: (1, 255, gh, gw) -> (3, 85, gh, gw) -> (3, gh, gw, 85)
+                output = output.reshape(3, 85, grid_size, grid_size).transpose(0, 2, 3, 1)
 
-                mask = scores > config.confidence_threshold
+                # Apply sigmoid
+                output = 1.0 / (1.0 + np.exp(-output))
+
+                # Extract components
+                obj_conf = output[..., 4]              # (3, gh, gw)
+                cls_scores = output[..., 5:]           # (3, gh, gw, 80)
+                cls_ids = np.argmax(cls_scores, axis=-1)  # (3, gh, gw)
+                cls_conf = np.max(cls_scores, axis=-1)    # (3, gh, gw)
+                conf = obj_conf * cls_conf             # (3, gh, gw)
+
+                # Filter by confidence
+                mask = conf > config.confidence_threshold
                 if not np.any(mask):
                     continue
 
-                valid_out = out[mask]
-                valid_scores = scores[mask]
-                valid_class_ids = class_ids[mask]
+                # Create grid coordinates
+                gy, gx = np.meshgrid(
+                    np.arange(grid_size, dtype=np.float32),
+                    np.arange(grid_size, dtype=np.float32),
+                    indexing='ij'
+                )
+                gx = np.tile(gx, (3, 1, 1))
+                gy = np.tile(gy, (3, 1, 1))
 
-                # Convert center format to corner format
-                cx, cy, w, h = valid_out[:, 0], valid_out[:, 1], valid_out[:, 2], valid_out[:, 3]
-                x1 = cx - w / 2
-                y1 = cy - h / 2
-                x2 = cx + w / 2
-                y2 = cy + h / 2
-                boxes = np.stack([x1, y1, x2, y2], axis=1)
+                # Broadcast anchors
+                aw = anchor[:, 0].reshape(3, 1, 1)
+                ah = anchor[:, 1].reshape(3, 1, 1)
 
-                all_boxes.append(boxes)
-                all_scores.append(valid_scores)
-                all_class_ids.append(valid_class_ids)
+                # Decode bounding boxes
+                dx, dy = output[..., 0], output[..., 1]
+                dw, dh = output[..., 2], output[..., 3]
+
+                cx = (dx * 2 - 0.5 + gx) * stride
+                cy = (dy * 2 - 0.5 + gy) * stride
+                bw = (dw * 2) ** 2 * aw
+                bh = (dh * 2) ** 2 * ah
+
+                # Apply mask and convert to [x1, y1, x2, y2]
+                cx_f, cy_f = cx[mask], cy[mask]
+                bw_f, bh_f = bw[mask], bh[mask]
+
+                x1 = cx_f - bw_f / 2
+                y1 = cy_f - bh_f / 2
+                x2 = cx_f + bw_f / 2
+                y2 = cy_f + bh_f / 2
+
+                all_boxes.append(np.stack([x1, y1, x2, y2], axis=-1))
+                all_scores.append(conf[mask])
+                all_class_ids.append(cls_ids[mask])
 
         except Exception as e:
-            logger.error(f"YOLO output parsing error: {e}")
+            logger.error(f"YOLO output parsing error: {e}", exc_info=True)
             return np.array([]), np.array([]), np.array([])
 
         if not all_boxes:

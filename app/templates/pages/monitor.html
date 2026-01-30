@@ -8,11 +8,7 @@
 
     <!-- System metrics -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-gray-800 rounded-xl border border-gray-700 p-4"
-             hx-get="/api/system/status"
-             hx-trigger="every 3s"
-             hx-swap="innerHTML"
-             id="cpu-card">
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-4" id="cpu-card">
             <p class="text-sm text-gray-400">CPU Usage</p>
             <p class="text-2xl font-bold text-white mt-1">--</p>
         </div>
@@ -48,7 +44,7 @@
         <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
             <h2 class="text-sm font-semibold text-gray-300 mb-3">Recent Events</h2>
             <div id="events-list"
-                 hx-get="/api/system/events?limit=20"
+                 hx-get="/api/system/events/list?limit=20"
                  hx-trigger="load, every 5s"
                  hx-swap="innerHTML"
                  class="space-y-1 max-h-64 overflow-y-auto">

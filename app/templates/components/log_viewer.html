@@ -2,7 +2,7 @@
 <div x-data="{ level: '', autoScroll: true }">
     <div class="flex items-center gap-2 mb-3">
         <select x-model="level"
-                @change="htmx.ajax('GET', '/api/system/logs?level=' + level + '&limit=50', '#log-entries')"
+                @change="htmx.ajax('GET', '/api/system/logs/list?level=' + level + '&limit=50', '#log-entries')"
                 class="bg-gray-700 border border-gray-600 rounded text-xs text-white px-2 py-1">
             <option value="">All levels</option>
             <option value="DEBUG">DEBUG</option>
@@ -10,7 +10,7 @@
             <option value="WARNING">WARNING</option>
             <option value="ERROR">ERROR</option>
         </select>
-        <button hx-get="/api/system/logs?limit=50"
+        <button hx-get="/api/system/logs/list?limit=50"
                 hx-target="#log-entries"
                 hx-swap="innerHTML"
                 class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-1 rounded transition">
@@ -24,7 +24,7 @@
 
     <div id="log-entries"
          class="bg-gray-900 rounded-lg p-3 font-mono text-xs max-h-64 overflow-y-auto space-y-0.5"
-         hx-get="/api/system/logs?limit=50"
+         hx-get="/api/system/logs/list?limit=50"
          hx-trigger="load, every 5s"
          hx-swap="innerHTML">
         <p class="text-gray-500">Loading logs...</p>

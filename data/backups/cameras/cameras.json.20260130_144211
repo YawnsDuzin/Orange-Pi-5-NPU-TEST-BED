@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-01-30T05:39:47.712236",
+  "count": 3,
+  "items": [
+    {
+      "id": "17440237",
+      "name": "사무실(줌카메라)",
+      "url": "rtsp://admin:trolleycam1~@192.168.0.131:554/Streaming/Channels/102",
+      "camera_type": "rtsp",
+      "enabled": true,
+      "reconnect_interval": 5,
+      "buffer_size": 1,
+      "description": null,
+      "created_at": "2026-01-30T14:32:46.719906",
+      "updated_at": "2026-01-30T14:32:46.719950"
+    },
+    {
+      "id": "aa5a24f9",
+      "name": "천안역",
+      "url": "rtsp://210.99.70.120:1935/live/cctv007.stream",
+      "camera_type": "rtsp",
+      "enabled": true,
+      "reconnect_interval": 5,
+      "buffer_size": 1,
+      "description": null,
+      "created_at": "2026-01-30T14:32:58.968177",
+      "updated_at": "2026-01-30T14:32:58.968220"
+    },
+    {
+      "id": "c0b8d68e",
+      "name": "ssdsdd",
+      "url": "rtsp://admin:trolleycam1~@192.168.0.131:554/Streaming/Channels/102",
+      "camera_type": "rtsp",
+      "enabled": true,
+      "reconnect_interval": 5,
+      "buffer_size": 1,
+      "description": null,
+      "created_at": "2026-01-30T14:39:47.707901",
+      "updated_at": "2026-01-30T14:39:47.707945"
+    }
+  ]
+}

@@ -200,22 +200,49 @@ class SystemMonitor:
             return info
 
         try:
-            npu_paths = ["/dev/rknpu", "/sys/class/misc/npu"]
+            # Check NPU availability
+            npu_paths = [
+                "/sys/class/devfreq/fdab0000.npu",
+                "/sys/devices/platform/fdab0000.npu",
+            ]
             info.available = any(os.path.exists(p) for p in npu_paths)
 
-            load_path = "/sys/kernel/debug/rknpu/load"
-            if os.path.exists(load_path):
+            # Read per-core usage from debug interface (requires root/sudo)
+            debug_load_path = "/sys/kernel/debug/rknpu/load"
+            if os.path.exists(debug_load_path):
                 try:
-                    with open(load_path) as f:
+                    with open(debug_load_path) as f:
                         content = f.read().strip()
-                        for line in content.split("\n"):
-                            if "%" in line:
-                                pct = line.split("%")[0].strip().split()[-1]
-                                info.usage_percent = float(pct)
-                                break
-                except (PermissionError, OSError):
-                    pass
+                        # Parse format: "NPU load:  Core0: 21%, Core1:  1%, Core2:  1%,"
+                        if "Core0" in content and "Core1" in content and "Core2" in content:
+                            core_usages = []
+                            for i in range(3):
+                                core_label = f"Core{i}:"
+                                if core_label in content:
+                                    # Extract percentage after "CoreN:"
+                                    start = content.index(core_label) + len(core_label)
+                                    end = content.index("%", start)
+                                    pct_str = content[start:end].strip()
+                                    core_usages.append(float(pct_str))
 
+                            if len(core_usages) == 3:
+                                info.per_core_usage = core_usages
+                                # Average usage across all cores
+                                info.usage_percent = round(sum(core_usages) / 3, 1)
+                                logger.debug(f"NPU per-core usage: Core0={core_usages[0]}%, Core1={core_usages[1]}%, Core2={core_usages[2]}%")
+                            else:
+                                logger.warning(f"Failed to parse NPU load from {debug_load_path}: incomplete data")
+                        else:
+                            logger.warning(f"Failed to parse NPU load from {debug_load_path}: unexpected format")
+                except (PermissionError, OSError) as e:
+                    logger.warning(
+                        f"Cannot read {debug_load_path}: {e}. "
+                        f"Run with sudo or grant permissions: sudo chmod +r {debug_load_path}"
+                    )
+            else:
+                logger.warning(f"NPU debug interface not found: {debug_load_path}")
+
+            # Read driver version
             version_paths = [
                 "/sys/kernel/debug/rknpu/version",
                 "/sys/class/misc/npu/device/driver/module/version",
@@ -228,6 +255,10 @@ class SystemMonitor:
                             break
                     except (PermissionError, OSError):
                         pass
+
+            # If no driver version found, set a default
+            if not info.driver_version and info.available:
+                info.driver_version = "RK3588"
 
         except Exception as e:
             logger.debug(f"NPU read error: {e}")

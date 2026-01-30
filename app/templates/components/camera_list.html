@@ -3,7 +3,8 @@
 <div class="space-y-1">
     {% for camera in cameras %}
     <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-700/50 cursor-pointer transition group"
-         onclick="dashboardApp && document.querySelector('[x-data]').__x.$data.selectCamera('{{ camera.config.id }}')">
+         @click="selectCamera('{{ camera.config.id }}')"
+         :class="selectedCamera === '{{ camera.config.id }}' ? 'bg-gray-700 ring-1 ring-indigo-500' : ''">
         <!-- Status dot -->
         <span class="w-2 h-2 rounded-full flex-shrink-0
             {% if camera.state.status.value == 'connected' %}bg-green-500
@@ -28,24 +29,27 @@
         <div class="flex-shrink-0 opacity-0 group-hover:opacity-100 transition flex gap-1">
             {% if camera.state.status.value in ['stopped', 'disconnected', 'error'] %}
             <button hx-post="/api/cameras/{{ camera.config.id }}/start"
-                    hx-target="#camera-list"
-                    hx-swap="innerHTML"
-                    class="text-green-400 hover:text-green-300 p-1" title="Start">
+                    hx-swap="none"
+                    @htmx:after-request.camel="htmx.ajax('GET', '/api/cameras/list', '#camera-list')"
+                    class="text-green-400 hover:text-green-300 p-1" title="Start"
+                    @click.stop>
                 <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
             </button>
             {% else %}
             <button hx-post="/api/cameras/{{ camera.config.id }}/stop"
-                    hx-target="#camera-list"
-                    hx-swap="innerHTML"
-                    class="text-red-400 hover:text-red-300 p-1" title="Stop">
+                    hx-swap="none"
+                    @htmx:after-request.camel="htmx.ajax('GET', '/api/cameras/list', '#camera-list')"
+                    class="text-red-400 hover:text-red-300 p-1" title="Stop"
+                    @click.stop>
                 <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
             </button>
             {% endif %}
             <button hx-delete="/api/cameras/{{ camera.config.id }}"
-                    hx-target="#camera-list"
-                    hx-swap="innerHTML"
+                    hx-swap="none"
+                    @htmx:after-request.camel="htmx.ajax('GET', '/api/cameras/list', '#camera-list')"
                     hx-confirm="Remove camera '{{ camera.config.name }}'?"
-                    class="text-gray-400 hover:text-red-400 p-1" title="Delete">
+                    class="text-gray-400 hover:text-red-400 p-1" title="Delete"
+                    @click.stop>
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                 </svg>

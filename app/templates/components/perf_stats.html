@@ -1,0 +1,12 @@
+<!-- Performance stats overlay (HTMX partial) -->
+{% if is_running and stats %}
+    <span class="text-green-400 font-medium">● Running</span>
+    <span class="text-gray-300 font-mono">{{ "%.1f"|format(stats.avg_fps) }} FPS</span>
+    <span class="text-gray-400 font-mono">{{ "%.1f"|format(stats.avg_inference_ms) }}ms</span>
+    <span class="text-gray-400">{{ "%.1f"|format(stats.avg_objects_per_frame) }} obj/frame</span>
+{% elif is_running %}
+    <span class="text-green-400 font-medium">● Running</span>
+    <span class="text-gray-400">Collecting stats...</span>
+{% else %}
+    <span class="text-gray-400">Inference not active</span>
+{% endif %}

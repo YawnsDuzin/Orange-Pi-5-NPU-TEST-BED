@@ -3,20 +3,20 @@
 {% block nav_cameras %}text-white bg-gray-700{% endblock %}
 
 {% block content %}
-<div class="space-y-4">
+<div class="space-y-4" x-data="{ showAddForm: false }">
     <div class="flex items-center justify-between">
         <h1 class="text-xl font-bold text-white">Camera Management</h1>
-        <button onclick="document.getElementById('add-camera-form').classList.toggle('hidden')"
+        <button @click="showAddForm = true; $nextTick(() => $refs.addCameraForm.reset())"
                 class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg transition">
             + Add Camera
         </button>
     </div>
 
     <!-- Add camera form -->
-    <div id="add-camera-form" class="hidden bg-gray-800 rounded-xl border border-gray-700 p-6">
+    <div x-show="showAddForm" x-transition class="bg-gray-800 rounded-xl border border-gray-700 p-6">
         <h2 class="text-lg font-semibold mb-4">Add New Camera</h2>
-        <form hx-post="/api/cameras" hx-ext="json-enc" hx-swap="none"
-              hx-on::after-request="if (event.detail.successful) { this.reset(); document.getElementById('add-camera-form').classList.add('hidden'); htmx.ajax('GET', '/api/cameras/list', '#cameras-grid'); }">
+        <form x-ref="addCameraForm" hx-post="/api/cameras" hx-ext="json-enc" hx-swap="none"
+              @htmx:after-request.camel="if ($event.detail.successful) { $el.reset(); showAddForm = false; htmx.ajax('GET', '/api/cameras/list', '#cameras-grid'); }">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm text-gray-400 mb-1">Name</label>
@@ -49,7 +49,7 @@
                 </div>
             </div>
             <div class="flex justify-end gap-2 mt-4">
-                <button type="button" onclick="document.getElementById('add-camera-form').classList.add('hidden')"
+                <button type="button" @click="$refs.addCameraForm.reset(); showAddForm = false"
                         class="px-4 py-2 text-sm text-gray-400 hover:text-white transition">Cancel</button>
                 <button type="submit" class="px-6 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">
                     Add Camera

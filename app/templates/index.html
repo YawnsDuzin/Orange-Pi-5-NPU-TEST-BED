@@ -40,8 +40,6 @@
             <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3"
                  x-show="selectedCamera">
                 <div id="perf-stats" class="flex items-center gap-4 text-sm"
-                     hx-get="/api/inference/status/"
-                     hx-trigger="every 1s"
                      hx-swap="innerHTML">
                     <span class="text-gray-400">Waiting for inference...</span>
                 </div>
@@ -55,7 +53,7 @@
         <div class="bg-gray-800 rounded-xl border border-gray-700 p-4">
             <div class="flex items-center justify-between mb-3">
                 <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Cameras</h2>
-                <button @click="showAddCamera = true"
+                <button @click="showAddCamera = true; $nextTick(() => $refs.addCameraForm?.reset())"
                         class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2 py-1 rounded transition">
                     + Add
                 </button>
@@ -74,6 +72,7 @@
                 <h2 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Models</h2>
                 <button hx-post="/api/models/scan"
                         hx-swap="none"
+                        @htmx:after-request="htmx.ajax('GET', '/api/models/list', '#model-list')"
                         class="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-1 rounded transition">
                     Scan
                 </button>
@@ -132,10 +131,10 @@
 
     <!-- Add Camera Modal -->
     <div x-show="showAddCamera" x-transition class="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-        <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-md" @click.away="showAddCamera = false">
+        <div class="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-md" @click.away="$refs.addCameraForm?.reset(); showAddCamera = false">
             <h3 class="text-lg font-semibold mb-4">Add Camera</h3>
-            <form hx-post="/api/cameras" hx-ext="json-enc" hx-swap="none"
-                  @htmx:after-request.camel="if ($event.detail.successful) { showAddCamera = false; htmx.ajax('GET', '/api/cameras/list', '#camera-list'); }">
+            <form x-ref="addCameraForm" hx-post="/api/cameras" hx-ext="json-enc" hx-swap="none"
+                  @htmx:after-request.camel="if ($event.detail.successful) { $el.reset(); showAddCamera = false; htmx.ajax('GET', '/api/cameras/list', '#camera-list'); }">
                 <div class="space-y-3">
                     <div>
                         <label class="block text-sm text-gray-400 mb-1">Name</label>
@@ -159,7 +158,7 @@
                     </div>
                 </div>
                 <div class="flex justify-end gap-2 mt-4">
-                    <button type="button" @click="showAddCamera = false"
+                    <button type="button" @click="$refs.addCameraForm.reset(); showAddCamera = false"
                             class="px-4 py-2 text-sm text-gray-400 hover:text-white transition">Cancel</button>
                     <button type="submit"
                             class="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">Add</button>
@@ -181,6 +180,11 @@ function dashboardApp() {
             // Update inference panel
             htmx.ajax('GET', '/api/inference/panel?camera_id=' + cameraId, '#inference-panel');
             htmx.ajax('GET', '/api/roi/editor?camera_id=' + cameraId, '#roi-panel');
+            // Start performance stats polling for selected camera
+            const perfStats = document.getElementById('perf-stats');
+            perfStats.setAttribute('hx-get', '/api/inference/status-panel?camera_id=' + cameraId);
+            perfStats.setAttribute('hx-trigger', 'every 1s');
+            htmx.process(perfStats);
         },
     };
 }

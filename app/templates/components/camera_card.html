@@ -28,6 +28,7 @@
         {% if camera.state.status.value == 'connected' %}
         <button hx-post="/api/cameras/{{ camera.config.id }}/stop"
                 hx-swap="none"
+                @htmx:after-request="htmx.ajax('GET', '/api/cameras/list', '#camera-list')"
                 class="text-gray-400 hover:text-red-400 transition p-1"
                 title="Stop">
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -37,6 +38,7 @@
         {% elif camera.state.status.value in ['stopped', 'disconnected', 'error'] %}
         <button hx-post="/api/cameras/{{ camera.config.id }}/start"
                 hx-swap="none"
+                @htmx:after-request="htmx.ajax('GET', '/api/cameras/list', '#camera-list')"
                 class="text-gray-400 hover:text-green-400 transition p-1"
                 title="Start">
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">

@@ -60,6 +60,37 @@ async def health_check(
     )
 
 
+@router.get("/health/indicator", response_class=HTMLResponse)
+async def health_indicator_html(
+    request: Request,
+    settings: AppSettings = Depends(get_app_settings),
+    camera_manager: CameraManager = Depends(get_camera_manager),
+    inference_engine: InferenceEngine = Depends(get_inference_engine),
+    system_monitor: SystemMonitor = Depends(get_system_monitor),
+):
+    """System health indicator as HTMX partial."""
+    status_data = system_monitor.status
+    connected = sum(
+        1
+        for s in camera_manager.get_all_states().values()
+        if s.status.value == "connected"
+    )
+
+    health = HealthCheck(
+        status="ok",
+        version=settings.app_version,
+        uptime_seconds=status_data.uptime_seconds,
+        cameras_connected=connected,
+        models_loaded=len(inference_engine.loaded_model_ids),
+        npu_available=status_data.npu.available,
+    )
+
+    return templates.TemplateResponse(
+        request, "components/system_indicator.html",
+        {"health": health},
+    )
+
+
 @router.get("/status", response_model=SystemStatus)
 async def system_status(
     system_monitor: SystemMonitor = Depends(get_system_monitor),
@@ -88,7 +119,7 @@ async def list_events(
     limit: int = 50,
     event_handler: EventHandler = Depends(get_event_handler),
 ):
-    """List recent events."""
+    """List recent events (JSON)."""
     events = event_handler.get_history(
         camera_id=camera_id or None,
         event_type=event_type or None,
@@ -98,6 +129,26 @@ async def list_events(
         "events": [e.model_dump(mode="json") for e in events],
         "total": len(events),
     }
+
+
+@router.get("/events/list", response_class=HTMLResponse)
+async def list_events_html(
+    request: Request,
+    camera_id: str = "",
+    event_type: str = "",
+    limit: int = 50,
+    event_handler: EventHandler = Depends(get_event_handler),
+):
+    """List recent events as HTMX partial."""
+    events = event_handler.get_history(
+        camera_id=camera_id or None,
+        event_type=event_type or None,
+        limit=limit,
+    )
+    return templates.TemplateResponse(
+        request, "components/event_list.html",
+        {"events": events},
+    )
 
 
 @router.post("/events/{event_id}/acknowledge")
@@ -173,6 +224,66 @@ async def get_logs(
     )
 
 
+@router.get("/logs/list", response_class=HTMLResponse)
+async def get_logs_html(
+    request: Request,
+    level: str = "",
+    limit: int = 100,
+    offset: int = 0,
+    settings: AppSettings = Depends(get_app_settings),
+):
+    """Get application log entries as HTMX partial."""
+    log_file = settings.storage.data_dir / "logs" / "app.log"
+    entries = []
+
+    if log_file.exists():
+        try:
+            with open(log_file, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+
+            # Parse log lines
+            for line in reversed(lines):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    # Parse format: "2024-01-01 12:00:00 [INFO] module: message"
+                    parts = line.split(" ", 3)
+                    if len(parts) < 4:
+                        continue
+
+                    timestamp_str = f"{parts[0]} {parts[1]}"
+                    level_str = parts[2].strip("[]")
+
+                    if level and level_str.upper() != level.upper():
+                        continue
+
+                    remaining = parts[3]
+                    logger_name, _, message = remaining.partition(": ")
+
+                    entries.append(LogEntry(
+                        timestamp=datetime.fromisoformat(timestamp_str.replace(",", ".")),
+                        level=level_str,
+                        logger=logger_name.strip(),
+                        message=message.strip(),
+                    ))
+
+                    if len(entries) >= offset + limit:
+                        break
+
+                except (ValueError, IndexError):
+                    continue
+
+        except Exception as e:
+            logger.error(f"Error reading logs: {e}")
+
+    paginated = entries[offset : offset + limit]
+    return templates.TemplateResponse(
+        request, "components/log_entries.html",
+        {"entries": paginated},
+    )
+
+
 @router.get("/logs/viewer", response_class=HTMLResponse)
 async def log_viewer_html(
     request: Request,
@@ -187,7 +298,7 @@ async def log_viewer_html(
 async def system_info(
     settings: AppSettings = Depends(get_app_settings),
 ):
-    """Get application and system information."""
+    """Get application and system information (JSON)."""
     return {
         "app_name": settings.app_name,
         "app_version": settings.app_version,
@@ -196,3 +307,23 @@ async def system_info(
         "max_loaded_models": settings.inference.max_loaded_models,
         "npu_core_mask": settings.inference.default_core_mask,
     }
+
+
+@router.get("/info/panel", response_class=HTMLResponse)
+async def system_info_html(
+    request: Request,
+    settings: AppSettings = Depends(get_app_settings),
+):
+    """Get application and system information as HTMX partial."""
+    info = {
+        "app_name": settings.app_name,
+        "app_version": settings.app_version,
+        "debug": settings.debug,
+        "max_cameras": settings.camera.max_cameras,
+        "max_loaded_models": settings.inference.max_loaded_models,
+        "npu_core_mask": settings.inference.default_core_mask,
+    }
+    return templates.TemplateResponse(
+        request, "components/system_info.html",
+        {"info": info},
+    )

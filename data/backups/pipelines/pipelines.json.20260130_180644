@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-01-30T08:48:22.188624",
+  "count": 1,
+  "items": [
+    {
+      "camera_id": "aa5a24f9",
+      "model_id": "yolov5s",
+      "inference_config": {
+        "confidence_threshold": 0.5,
+        "nms_threshold": 0.45,
+        "class_filter": [],
+        "max_detections": 100
+      },
+      "enable_roi_filter": true,
+      "enable_events": true,
+      "skip_frames": 0
+    }
+  ]
+}

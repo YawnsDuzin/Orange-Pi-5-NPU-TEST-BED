@@ -63,7 +63,7 @@ class StreamPublisher:
         if camera_id not in self._mjpeg_queues:
             self._mjpeg_queues[camera_id] = set()
 
-        queue: asyncio.Queue = asyncio.Queue(maxsize=2)
+        queue: asyncio.Queue = asyncio.Queue(maxsize=1)
         self._mjpeg_queues[camera_id].add(queue)
         return queue
 
@@ -106,13 +106,26 @@ class StreamPublisher:
         if not self._has_clients(camera_id):
             return
 
-        # Draw overlay
-        display_frame = self._draw_overlay(frame, inference_result)
+        # Draw overlay and encode JPEG in thread pool to avoid blocking event loop
+        loop = asyncio.get_running_loop()
 
-        # Encode JPEG
-        encode_params = [cv2.IMWRITE_JPEG_QUALITY, self._settings.mjpeg_quality]
-        _, jpeg_buffer = cv2.imencode(".jpg", display_frame, encode_params)
-        jpeg_bytes = jpeg_buffer.tobytes()
+        def encode_frame():
+            """Draw overlay and encode JPEG (blocking operations)."""
+            display_frame = self._draw_overlay(frame, inference_result)
+
+            # Resize to reduce JPEG encoding time (biggest bottleneck)
+            h, w = display_frame.shape[:2]
+            max_dim = 1280  # Maximum dimension for streaming
+            if w > max_dim or h > max_dim:
+                scale = max_dim / max(w, h)
+                new_w, new_h = int(w * scale), int(h * scale)
+                display_frame = cv2.resize(display_frame, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+
+            encode_params = [cv2.IMWRITE_JPEG_QUALITY, self._settings.mjpeg_quality]
+            _, jpeg_buffer = cv2.imencode(".jpg", display_frame, encode_params)
+            return jpeg_buffer.tobytes()
+
+        jpeg_bytes = await loop.run_in_executor(None, encode_frame)
 
         # Publish concurrently
         await asyncio.gather(
@@ -201,12 +214,14 @@ class StreamPublisher:
         dead_queues: set[asyncio.Queue] = set()
         for queue in queues:
             try:
-                # Drop oldest frame if queue is full (keep latest)
-                if queue.full():
+                # Always clear the queue and put latest frame only
+                # This prevents old frames from being sent out of order
+                while not queue.empty():
                     try:
                         queue.get_nowait()
                     except asyncio.QueueEmpty:
-                        pass
+                        break
+
                 queue.put_nowait(jpeg_bytes)
             except Exception:
                 dead_queues.add(queue)
@@ -226,11 +241,18 @@ class StreamPublisher:
         frame = frame.copy()
 
         # Detection boxes
-        for det in result.detections:
+        # Use different color for cached results (visual feedback)
+        is_cached = result.frames_since_inference > 0
+        base_color = (0, 200, 255) if is_cached else (0, 255, 0)  # Orange for cached, Green for fresh
+
+        # Limit overlay to top 20 detections to improve performance
+        top_detections = sorted(result.detections, key=lambda d: d.confidence, reverse=True)[:20]
+
+        for det in top_detections:
             x1, y1 = int(det.bbox.x1), int(det.bbox.y1)
             x2, y2 = int(det.bbox.x2), int(det.bbox.y2)
             label = f"{det.class_name} {det.confidence:.2f}"
-            color = (0, 255, 0)
+            color = base_color
 
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
 
@@ -269,6 +291,10 @@ class StreamPublisher:
         inf_ms = result.inference_time_ms
         obj_count = result.object_count
         info_text = f"FPS: {fps:.1f} | Infer: {inf_ms:.1f}ms | Objects: {obj_count}"
+
+        # Add cache indicator if result is cached
+        if result.frames_since_inference > 0:
+            info_text += f" | Cached: {result.frames_since_inference}f"
 
         cv2.putText(
             frame, info_text, (10, 28),

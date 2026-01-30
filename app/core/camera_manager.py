@@ -17,6 +17,7 @@ import numpy as np
 
 from app.config import CameraSettings
 from app.models.camera import CameraConfig, CameraState, CameraStatus, CameraType
+from app.services.config_persistence import ConfigPersistence, PersistenceConfig
 
 IS_WINDOWS = platform.system() == "Windows"
 
@@ -69,11 +70,21 @@ class CameraStream:
         self._fps_counter = FPSCounter()
         self._start_time: Optional[float] = None
         self._last_frame: Optional[np.ndarray] = None
+        self._last_frame_time: float = 0.0
+        self._last_frame_id: int = 0
         self._frame_lock = asyncio.Lock()
 
     @property
     def last_frame(self) -> Optional[np.ndarray]:
         return self._last_frame
+
+    @property
+    def last_frame_time(self) -> float:
+        return self._last_frame_time
+
+    @property
+    def last_frame_id(self) -> int:
+        return self._last_frame_id
 
     async def start(self) -> None:
         """Start the camera stream capture loop."""
@@ -97,6 +108,7 @@ class CameraStream:
         self._release_capture()
         self.state.status = CameraStatus.STOPPED
         self._fps_counter.reset()
+        self._last_frame_id = 0
         logger.info(f"Camera '{self.config.name}' ({self.config.id}) stream stopped")
 
     def on_frame(self, callback: Callable) -> None:
@@ -224,6 +236,8 @@ class CameraStream:
 
             # Update state
             self._last_frame = frame
+            self._last_frame_time = time.monotonic()
+            self._last_frame_id += 1
             self.state.frame_count += 1
             self.state.fps = self._fps_counter.update()
             if self._start_time:
@@ -236,8 +250,8 @@ class CameraStream:
                 except Exception as e:
                     logger.error(f"Frame callback error: {e}")
 
-            # Yield to event loop (prevent blocking)
-            await asyncio.sleep(0.001)
+            # Yield to event loop (prevent blocking) - minimal sleep
+            await asyncio.sleep(0)
 
     def _release_capture(self) -> None:
         """Release OpenCV capture resource."""
@@ -255,12 +269,26 @@ class CameraManager:
 
     Provides CRUD operations for cameras and manages their lifecycle.
     Thread-safe through asyncio locks.
+
+    Supports persistence: cameras are automatically saved to disk and restored
+    on service restart when auto_persist=True.
     """
 
-    def __init__(self, settings: CameraSettings):
+    def __init__(
+        self,
+        settings: CameraSettings,
+        persistence: Optional[ConfigPersistence[CameraConfig]] = None,
+        auto_persist: bool = True,
+    ):
         self._settings = settings
         self._cameras: dict[str, CameraStream] = {}
         self._lock = asyncio.Lock()
+
+        # Persistence support
+        self._persistence = persistence or ConfigPersistence[CameraConfig](
+            PersistenceConfig(name="cameras", filename="cameras.json")
+        )
+        self._auto_persist = auto_persist
 
     @property
     def cameras(self) -> dict[str, CameraStream]:
@@ -284,12 +312,23 @@ class CameraManager:
                 await stream.start()
 
             logger.info(f"Camera added: {config.name} ({config.id})")
+
+            # Auto-persist if enabled
+            if self._auto_persist:
+                await self._save_cameras()
+
             return stream
 
     async def remove_camera(self, camera_id: str) -> bool:
         """Remove a camera and stop its stream."""
         async with self._lock:
-            return await self._stop_camera_unlocked(camera_id, remove=True)
+            result = await self._stop_camera_unlocked(camera_id, remove=True)
+
+            # Auto-persist if enabled
+            if result and self._auto_persist:
+                await self._save_cameras()
+
+            return result
 
     async def start_camera(self, camera_id: str) -> None:
         """Start a stopped camera stream."""
@@ -307,6 +346,20 @@ class CameraManager:
         if stream is None:
             return None
         return stream.last_frame
+
+    def get_frame_time(self, camera_id: str) -> float:
+        """Get the timestamp of the latest frame from a camera."""
+        stream = self._cameras.get(camera_id)
+        if stream is None:
+            return 0.0
+        return stream.last_frame_time
+
+    def get_frame_id(self, camera_id: str) -> int:
+        """Get the ID of the latest frame from a camera."""
+        stream = self._cameras.get(camera_id)
+        if stream is None:
+            return 0
+        return stream.last_frame_id
 
     def get_state(self, camera_id: str) -> Optional[CameraState]:
         """Get the state of a specific camera."""
@@ -347,3 +400,40 @@ class CameraManager:
             del self._cameras[camera_id]
             logger.info(f"Camera removed: {camera_id}")
         return True
+
+    async def restore_cameras(self) -> int:
+        """
+        Restore cameras from persistent storage.
+
+        Returns:
+            Number of cameras successfully restored.
+        """
+        configs = await self._persistence.load_all(CameraConfig)
+        restored_count = 0
+
+        # Temporarily disable auto-persist to avoid redundant saves during restore
+        original_auto_persist = self._auto_persist
+        self._auto_persist = False
+
+        try:
+            for config in configs:
+                try:
+                    await self.add_camera(config)
+                    restored_count += 1
+                except Exception as e:
+                    logger.error(
+                        f"Failed to restore camera '{config.name}' ({config.id}): {e}"
+                    )
+
+            logger.info(f"Restored {restored_count}/{len(configs)} camera(s)")
+
+        finally:
+            # Re-enable auto-persist
+            self._auto_persist = original_auto_persist
+
+        return restored_count
+
+    async def _save_cameras(self) -> None:
+        """Save all cameras to persistent storage."""
+        configs = [stream.config for stream in self._cameras.values()]
+        await self._persistence.save_all(configs)

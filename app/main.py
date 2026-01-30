@@ -121,6 +121,14 @@ async def lifespan(app: FastAPI):
     await model_registry.scan_models()
     await roi_manager.load_presets()
 
+    # Restore cameras and pipelines from persistent storage
+    logger.info("Restoring saved cameras and pipelines...")
+    cameras_restored = await camera_manager.restore_cameras()
+    pipelines_restored = await frame_processor.restore_pipelines()
+    logger.info(
+        f"Restored {cameras_restored} camera(s) and {pipelines_restored} pipeline(s)"
+    )
+
     # Start system monitor
     await system_monitor.start()
 
